@@ -46,6 +46,14 @@ const serverEnvSchema = z.object({
   RESERVATION_TTL_MINUTES: z.coerce.number().int().positive().default(15),
   OTP_EXPIRY_SECONDS: z.coerce.number().int().positive().default(300),
 
+  // Shipping fee (paise) — Product_Spec_Requirements.md §7.2: "v1 can start
+  // with flat rate + free-above-threshold" (zone/weight-based rules and
+  // courier integration are Phase 8's job, not this). Defaults are a
+  // placeholder launch config, freely adjustable via env — not a business
+  // sign-off item like GST/COD, see AGENTS.md §9.
+  SHIPPING_FLAT_FEE: z.coerce.number().int().nonnegative().default(4900),
+  FREE_SHIPPING_THRESHOLD: z.coerce.number().int().nonnegative().default(99900),
+
   // Pending PRD §14 decision — not yet confirmed by the business, see AGENTS.md §9.
   COD_MAX_ORDER_VALUE: z.coerce.number().int().positive().optional(),
 

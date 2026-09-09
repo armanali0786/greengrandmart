@@ -525,11 +525,14 @@ Writes to this endpoint are wrapped in `withAudit()` — every change is logged 
 
 ### Coupons / Promotions
 
-| Method   | Path                 | Role                     |
-| -------- | -------------------- | ------------------------ |
-| GET/POST | `/admin/coupons`     | admin, staff (marketing) |
-| PATCH    | `/admin/coupons/:id` | admin, staff             |
-| GET/POST | `/admin/promotions`  | admin, staff             |
+| Method   | Path                    | Role                     |
+| -------- | ----------------------- | ------------------------ |
+| GET/POST | `/admin/coupons`        | admin, staff (marketing) |
+| PATCH    | `/admin/coupons/:id`    | admin, staff             |
+| GET/POST | `/admin/promotions`     | admin, staff             |
+| PATCH    | `/admin/promotions/:id` | admin, staff             |
+
+`PATCH /admin/promotions/:id` isn't in this table's original listing but is required by UX_UI_Spec.md §5.5's "toggle to deactivate" — added during Phase 5 implementation, same pattern as `/admin/coupons/:id`.
 
 ### Refunds
 

@@ -87,6 +87,18 @@ export interface BrandSummary {
   logoPath: string | null;
 }
 
+/** What modules/pricing needs to price a cart line — see catalog.service.ts's getVariantsForPricing. */
+export interface VariantPricingSnapshot {
+  variantId: string;
+  productId: string;
+  productName: string;
+  categoryId: string | null;
+  brandId: string | null;
+  price: number;
+  salePrice: number | null;
+  gstRate: number;
+}
+
 export interface PaginatedResult<T> {
   items: T[];
   page: number;

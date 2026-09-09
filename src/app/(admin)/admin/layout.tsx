@@ -13,6 +13,8 @@ const NAV_ITEMS = [
   { href: '/admin/categories', label: 'Categories' },
   { href: '/admin/brands', label: 'Brands' },
   { href: '/admin/inventory', label: 'Inventory' },
+  { href: '/admin/coupons', label: 'Coupons' },
+  { href: '/admin/promotions', label: 'Promotions' },
 ];
 
 export default function AdminLayout({ children }: LayoutProps<'/admin'>) {

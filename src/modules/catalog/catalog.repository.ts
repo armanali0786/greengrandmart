@@ -451,3 +451,36 @@ export async function setPrimaryImageRow(
     return tx.productImage.update({ where: { id: imageId }, data: { isPrimary: true } });
   });
 }
+
+export interface VariantPricingRow {
+  id: string;
+  price: number;
+  salePrice: number | null;
+  product: {
+    id: string;
+    name: string;
+    categoryId: string | null;
+    brandId: string | null;
+    gstRate: Prisma.Decimal;
+  };
+}
+
+/**
+ * Everything the pricing module needs to price a set of cart lines — never
+ * trusts a client-sent price, always re-reads live from here. Exposed via
+ * catalog.service.ts per the module-boundary rule (cross-module imports go
+ * through .service.ts only), not called directly from modules/pricing.
+ */
+export async function findVariantsForPricing(variantIds: string[]): Promise<VariantPricingRow[]> {
+  return db.productVariant.findMany({
+    where: { id: { in: variantIds } },
+    select: {
+      id: true,
+      price: true,
+      salePrice: true,
+      product: {
+        select: { id: true, name: true, categoryId: true, brandId: true, gstRate: true },
+      },
+    },
+  });
+}

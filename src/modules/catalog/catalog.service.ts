@@ -30,6 +30,7 @@ import type {
   ProductDetail,
   ProductListItem,
   ProductStatus,
+  VariantPricingSnapshot,
 } from '@/modules/catalog/catalog.types';
 
 function toPaginated<T>(
@@ -203,6 +204,24 @@ export async function listFeaturedProducts(limit = 8): Promise<ProductListItem[]
 export async function listNewestProducts(limit = 8): Promise<ProductListItem[]> {
   const rows = await repo.findNewestProducts(limit);
   return rows.map(toProductListItem);
+}
+
+/** modules/pricing's read into the catalog — see catalog.repository.ts's findVariantsForPricing. */
+export async function getVariantsForPricing(
+  variantIds: string[],
+): Promise<VariantPricingSnapshot[]> {
+  if (variantIds.length === 0) return [];
+  const rows = await repo.findVariantsForPricing(variantIds);
+  return rows.map((v) => ({
+    variantId: v.id,
+    productId: v.product.id,
+    productName: v.product.name,
+    categoryId: v.product.categoryId,
+    brandId: v.product.brandId,
+    price: v.price,
+    salePrice: v.salePrice,
+    gstRate: Number(v.product.gstRate),
+  }));
 }
 
 // ── Admin mutations ─────────────────────────────────────────────────────

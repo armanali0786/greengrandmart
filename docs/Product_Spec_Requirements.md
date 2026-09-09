@@ -122,6 +122,10 @@ subtotal   = sum(line_total)
 
 **Acceptance criteria:** applying an expired coupon, an over-limit coupon, and a below-minimum-cart coupon all produce distinct, correct error messages — never a generic "invalid coupon."
 
+**Phase 5 implementation note (addendum):** `ECOMMERCE_IMPLEMENTATION_PLAN.md`'s schema section lists 5 promotion types (`sale_price`, `category_discount`, `bogo`, `bundle`, `free_shipping`) but only ever gives a worked example for a category/brand-scoped percentage discount — no rule shape is specified anywhere for `bogo`/`bundle` (both need real cart-combination matching logic), and `sale_price` would duplicate the catalog's own `product.salePrice`/`variant.salePrice` fields (already the mechanism for "put this item on sale"). Per AGENTS.md §9, Phase 5 implements `category_discount` (percentage/fixed off a scope of product/category/brand ids, or all) and `free_shipping` (waive the shipping fee, optionally above a min cart value) — both concretely specified. `sale_price`/`bogo`/`bundle` are deferred; the DB CHECK constraint still allows those type values for forward-compatibility, but nothing in the app constructs or validates them yet.
+
+**Coupon `usage_limit_per_user` vs. the DB constraint (addendum):** `coupon_redemptions` has `UNIQUE(coupon_id, user_id)` (Architecture.md §5.3's race-safety mechanism), which caps a user to _one_ redemption of a given coupon regardless of `usage_limit_per_user`'s configured value. So in practice `usage_limit_per_user` only ever behaves as 1 — a value >1 would need a schema change (a redemption count column instead of a uniqueness constraint) to actually enforce, which is out of scope for v1. The admin coupon form validates the field as fixed at 1 for now, with a note explaining why.
+
 ---
 
 ## 5. Checkout & Orders

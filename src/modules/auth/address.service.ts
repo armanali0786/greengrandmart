@@ -23,6 +23,11 @@ async function getOwnedAddressOrThrow(
   return address;
 }
 
+/** Used by modules/pricing's checkout-quote route to resolve the shipping address's state for CGST/SGST vs IGST. */
+export async function getAddress(user: SessionUser, addressId: string): Promise<AddressRecord> {
+  return getOwnedAddressOrThrow(user, addressId);
+}
+
 export async function editAddress(
   user: SessionUser,
   addressId: string,

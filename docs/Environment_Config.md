@@ -80,6 +80,8 @@
 | `RESERVATION_TTL_MINUTES` | Server-only | Inventory reservation expiry window (default: 15)                                                                    |
 | `OTP_EXPIRY_SECONDS`      | Server-only | Default: 300                                                                                                         |
 | `COD_MAX_ORDER_VALUE`     | Server-only | Optional cap on COD-eligible order value, if the business rule from `PRD.md` Section 14 is confirmed                 |
+| `SHIPPING_FLAT_FEE`       | Server-only | Flat shipping fee in paise (Phase 5's minimal v1 rule per `Product_Spec_Requirements.md` §7.2; default ₹49)          |
+| `FREE_SHIPPING_THRESHOLD` | Server-only | Cart value (paise, post-discount) at/above which shipping is free (default ₹999)                                     |
 
 ---
 

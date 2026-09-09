@@ -6,6 +6,7 @@ import { ShoppingBag } from 'lucide-react';
 import { useCart, useRemoveCartItem, useUpdateCartItemQuantity } from '@/hooks/useCart';
 import { useToast } from '@/components/ui/Toast';
 import { CartItemRow } from '@/components/storefront/CartItemRow';
+import { CouponInput, type AppliedCoupon } from '@/components/storefront/CouponInput';
 import { Button } from '@/components/ui/Button';
 import { toRupeeDisplay } from '@/lib/money';
 
@@ -23,6 +24,7 @@ export default function CartPage() {
   // not a real "add it back" request.
   const [pendingRemovalIds, setPendingRemovalIds] = useState<Set<string>>(new Set());
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
 
   function cancelPendingRemoval(itemId: string) {
     const timer = timers.current.get(itemId);
@@ -105,7 +107,18 @@ export default function CartPage() {
             <span className="text-muted">Subtotal</span>
             <span className="text-foreground font-medium">{toRupeeDisplay(subtotal)}</span>
           </div>
-          <p className="text-muted text-xs">GST and shipping calculated at checkout.</p>
+          {appliedCoupon && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Coupon ({appliedCoupon.code})</span>
+              <span className="text-primary-700 font-medium">
+                −{toRupeeDisplay(appliedCoupon.estimatedDiscount)}
+              </span>
+            </div>
+          )}
+          <CouponInput applied={appliedCoupon} onApply={setAppliedCoupon} />
+          <p className="text-muted text-xs">
+            Estimate only — promotions, exact tax, and shipping are confirmed at checkout.
+          </p>
           {hasUnavailable && (
             <p role="alert" className="bg-error-bg text-error rounded-[10px] px-3 py-2 text-xs">
               Some items are unavailable — remove them to continue.
