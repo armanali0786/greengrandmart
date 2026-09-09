@@ -8,8 +8,21 @@ export interface CreatePaymentResult {
   keyId: string;
 }
 
+export interface RefundPaymentParams {
+  razorpayPaymentId: string;
+  amount: number;
+  /** docs/Product_Spec_Requirements.md §8.2: "processed via Razorpay refund API with an idempotency key to prevent duplicate refunds on retry" — the caller passes the `refunds` row's own id, so a retried request for the same refund never double-charges the provider. */
+  idempotencyKey: string;
+}
+
+export interface RefundPaymentResult {
+  providerRefundId: string;
+  status: string;
+}
+
 export interface PaymentProvider {
   createPayment(params: { orderId: string; amount: number }): Promise<CreatePaymentResult>;
+  refundPayment(params: RefundPaymentParams): Promise<RefundPaymentResult>;
 }
 
 /** Used whenever real Razorpay credentials aren't configured (local dev/test) — see createPaymentProvider() below. */
@@ -19,6 +32,13 @@ export class StubPaymentProvider implements PaymentProvider {
       providerOrderId: `order_stub_${randomUUID().replace(/-/g, '').slice(0, 18)}`,
       amount: params.amount,
       keyId: RAZORPAY_STUB_KEY_ID,
+    };
+  }
+
+  async refundPayment(): Promise<RefundPaymentResult> {
+    return {
+      providerRefundId: `rfnd_stub_${randomUUID().replace(/-/g, '').slice(0, 18)}`,
+      status: 'processed',
     };
   }
 }
@@ -64,6 +84,37 @@ export class RazorpayPaymentProvider implements PaymentProvider {
       amount: data.amount,
       keyId: env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     };
+  }
+
+  /**
+   * `receipt` is Razorpay's documented free-text reference field on a
+   * refund request — passing our own `refunds.id` as the idempotency key
+   * lets a retried request be recognized as the same logical refund rather
+   * than creating a second one. Worth re-verifying the exact idempotency
+   * wire contract against live Razorpay docs before go-live, same caveat as
+   * createPayment() above — this has never run against a real account.
+   */
+  async refundPayment(params: RefundPaymentParams): Promise<RefundPaymentResult> {
+    const auth = Buffer.from(
+      `${env.NEXT_PUBLIC_RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`,
+    ).toString('base64');
+    const res = await fetch(
+      `https://api.razorpay.com/v1/payments/${params.razorpayPaymentId}/refund`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: params.amount, receipt: params.idempotencyKey }),
+      },
+    );
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => '');
+      throw new Error(`Razorpay refund failed (${res.status}): ${bodyText.slice(0, 200)}`);
+    }
+    const data = (await res.json()) as { id: string; status: string };
+    return { providerRefundId: data.id, status: data.status };
   }
 }
 

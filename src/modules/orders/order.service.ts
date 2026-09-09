@@ -1,8 +1,11 @@
+import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { NotFoundError } from '@/lib/errors';
 import { requireOwnership, requireRole } from '@/modules/auth/auth.guard';
 import type { SessionUser } from '@/modules/auth/auth.types';
 import { releaseReservationsForOrder } from '@/modules/inventory/inventory.service';
+import { getShipmentView, recordShipmentProgress } from '@/modules/shipping/shipment.service';
+import { findReturnsForOrder } from '@/modules/returns/return.repository';
 import { withAudit } from '@/modules/admin/audit';
 import * as repo from '@/modules/orders/order.repository';
 import type {
@@ -11,7 +14,11 @@ import type {
   OrderListRow,
 } from '@/modules/orders/order.repository';
 import { InvalidOrderStateError } from '@/modules/orders/order.errors';
-import { canAdminTransition, isCustomerCancelable } from '@/modules/orders/order-status-machine';
+import {
+  canAdminTransition,
+  canTransition,
+  isCustomerCancelable,
+} from '@/modules/orders/order-status-machine';
 import type { ListOrdersQuery, UpdateOrderStatusInput } from '@/modules/orders/order.schema';
 import type {
   AddressSnapshot,
@@ -33,8 +40,19 @@ function toOrderSummary(row: OrderListRow): OrderSummary {
   };
 }
 
-function toOrderDetail(row: OrderDetailRow): OrderDetail {
+async function toOrderDetail(row: OrderDetailRow): Promise<OrderDetail> {
   const status = row.status as OrderStatus;
+  const [shipment, returns] = await Promise.all([
+    getShipmentView(row.id),
+    findReturnsForOrder(row.id),
+  ]);
+  // Most recent return per item — an item can only ever have one active
+  // return at a time (return.service.ts's findActiveReturnForItem), but a
+  // rejected one doesn't block the display of a later attempt existing.
+  const returnStatusByItem = new Map<string, string>();
+  for (const r of [...returns].reverse()) {
+    returnStatusByItem.set(r.orderItemId, r.status);
+  }
   return {
     id: row.id,
     orderNumber: row.orderNumber,
@@ -60,6 +78,7 @@ function toOrderDetail(row: OrderDetailRow): OrderDetail {
       taxAmount: item.taxAmount,
       quantity: item.quantity,
       lineTotal: item.lineTotal,
+      returnStatus: returnStatusByItem.get(item.id) ?? null,
     })),
     statusHistory: row.statusHistory.map((h) => ({
       fromStatus: h.fromStatus as OrderStatus | null,
@@ -67,6 +86,7 @@ function toOrderDetail(row: OrderDetailRow): OrderDetail {
       note: h.note,
       createdAt: h.createdAt.toISOString(),
     })),
+    shipment,
     canCancel: isCustomerCancelable(status),
   };
 }
@@ -126,6 +146,37 @@ export async function cancelOrder(user: SessionUser, orderId: string): Promise<O
   const updated = await repo.findOrderById(orderId);
   if (!updated) throw new NotFoundError('Order not found.');
   return toOrderDetail(updated);
+}
+
+/**
+ * Best-effort order-status advance shared by the returns and refunds
+ * modules — a no-op if the order isn't currently in a state this transition
+ * is legal from. Both callers already enforce their own invariants (returns:
+ * "one active return in flight per order"; refunds: only `type === 'full'`
+ * attempts this at all), so this is defense in depth, not the primary
+ * guard — a `NotFoundError`/thrown validation error here would be the wrong
+ * failure mode for what's meant to be a secondary status reflection, not
+ * the return/refund action itself.
+ */
+export async function advanceOrderIfLegal(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+  to: OrderStatus,
+  changedBy: string | null,
+  note: string | null,
+): Promise<void> {
+  const order = await repo.findOrderByIdForUpdate(tx, orderId);
+  if (!order) return;
+  const from = order.status as OrderStatus;
+  if (!canTransition(from, to)) return;
+  await repo.updateOrderStatusRow(tx, orderId, to);
+  await repo.createStatusHistoryRow(tx, {
+    orderId,
+    fromStatus: from,
+    toStatus: to,
+    changedBy,
+    note,
+  });
 }
 
 // ── Admin ───────────────────────────────────────────────────────────────
@@ -196,6 +247,7 @@ export async function updateOrderStatusAdmin(
           changedBy: user.id,
           note: input.note ?? null,
         });
+        await recordShipmentProgress(tx, orderId, input.status, input.shipment);
       }),
   });
 

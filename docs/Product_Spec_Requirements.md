@@ -239,6 +239,40 @@ Alternate paths: `Payment Failed`, `Cancelled`, `Return Requested → Return App
 
 **Acceptance criteria:** a partial refund for 1 of 3 items in an order correctly recalculates and displays remaining order value; the refunded item's stock is not restocked until physically received and marked so by admin.
 
+> **Phase 8 implementation addendum — order-level status vs. item-level
+> returns.** This section's "Return Requested" language and
+> `orders.status`'s enum (`return_requested → return_approved → returned →
+refund_pending → refunded`, wired in `order-status-machine.ts` since
+> Phase 6) are both whole-order values, but `returns` is a per-**item**
+> table (`order_item_id`, not `order_id` alone) and `refunds.type` includes
+> `'partial'`/`'item'` — the schema itself expects returns/refunds narrower
+> than the whole order, which the order-status enum can't represent
+> per-item. Resolved as:
+>
+> - `orders.status` moves through the return/refund chain only to reflect
+>   **one return in flight at a time** for that order — requesting a return
+>   is refused (`INVALID_ORDER_STATE`) while another item on the same order
+>   already has a non-terminal return, so the order-level status stays an
+>   honest single-return narrative. Concurrent independent returns for
+>   different items on the same order are out of scope for v1; each still
+>   gets its own `returns` row, just serialized one at a time.
+> - A refund only advances `orders.status` toward `refund_pending →
+refunded` when `type === 'full'` — a `partial`/`item`/`shipping` refund
+>   updates its own `refunds` row and the order's displayed "amount
+>   refunded so far," but doesn't relabel an otherwise-still-`delivered`
+>   order as globally "Refunded," matching this section's own acceptance
+>   criterion about a partial refund only "recalculating remaining order
+>   value."
+> - `returns.status` reaching `'completed'` is a separate, manual admin
+>   action (`POST /admin/returns/:id/complete`, only legal from
+>   `'item_received'`) rather than something automatically triggered by a
+>   refund — the schema has no `returns.refund_id`/`refunds.return_id` FK
+>   linking the two tables, and `refunds` module boundaries (Architecture.md
+>   §4: "refunds calls payments, not the other way around") don't authorize
+>   a `refunds → returns` dependency either. An admin who has confirmed the
+>   refund is done marks the return itself complete as a final bookkeeping
+>   step.
+
 ---
 
 ## 9. Phone OTP (COD Confirmation — MSG91)

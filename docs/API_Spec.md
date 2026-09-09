@@ -57,6 +57,8 @@ Error:
 | `OTP_INVALID`                 | 400         | Wrong/expired OTP code                                                                                                                                                                                                                           |
 | `RATE_LIMITED`                | 429         | Too many requests for this action/identity                                                                                                                                                                                                       |
 | `REAUTHENTICATION_REQUIRED`   | 401         | Added during implementation for `DELETE /auth/me` (docs/Product_Spec_Requirements.md §1.4 requires re-auth before account deletion) — the ID token's `auth_time` is older than 5 minutes; client re-authenticates and retries with a fresh token |
+| `RETURN_WINDOW_EXPIRED`       | 409         | Added during Phase 8 — return requested more than `RETURN_WINDOW_DAYS` after delivery                                                                                                                                                            |
+| `INVALID_RETURN_STATE`        | 409         | Added during Phase 8 — requested action not valid for the return's current status, or a second return already active on the order                                                                                                                |
 | `INTERNAL_ERROR`              | 500         | Unexpected server error (generic message to client, full detail logged)                                                                                                                                                                          |
 
 ### 1.4 Pagination
@@ -517,11 +519,27 @@ Writes to this endpoint are wrapped in `withAudit()` — every change is logged 
 `PATCH /admin/orders/:id/status`
 
 ```json
-// Request
-{ "status": "packed", "trackingNumber": null }
+// Request — `shipment` is optional and only meaningful once the order
+// enters a shipment-relevant status (packed/shipped/out_for_delivery/
+// delivered); folded into this same endpoint rather than a separate
+// `/admin/shipments` one, matching this table's own original sample body.
+{ "status": "packed", "note": "Ready for pickup", "shipment": { "carrier": "BlueDart", "trackingNumber": "BD123456789", "estimatedDelivery": "2026-09-15" } }
 // Invalid transition
 { "success": false, "error": { "code": "INVALID_ORDER_STATE", "message": "Cannot move from 'confirmed' directly to 'delivered'." } }
 ```
+
+### Returns
+
+Not in this table's original listing — the `returns` table (Data_Model_DB_Schema.md §8) has no documented API surface at all; added during Phase 8 implementation, same envelope/role/error conventions as the rest of this section (`INVALID_RETURN_STATE`/`RETURN_WINDOW_EXPIRED` are new error codes, same ad-hoc pattern as `INVALID_IMAGE`/`CONFLICT`).
+
+| Method | Path                          | Role         |
+| ------ | ----------------------------- | ------------ |
+| GET    | `/admin/returns`              | admin, staff |
+| PATCH  | `/admin/returns/:id`          | admin, staff |
+| POST   | `/admin/returns/:id/receive`  | admin, staff |
+| POST   | `/admin/returns/:id/complete` | admin, staff |
+
+`PATCH /admin/returns/:id` — `{ "action": "approve" | "reject", "note": "optional" }`. `POST .../receive` marks the item physically received and restocks inventory (Product_Spec_Requirements.md §8.3); `POST .../complete` is a manual final step once the admin has confirmed the associated refund is done (no FK links `returns` to `refunds` — see the Product_Spec_Requirements.md §8 addendum).
 
 ### Coupons / Promotions
 

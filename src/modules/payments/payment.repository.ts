@@ -105,3 +105,22 @@ export async function insertWebhookEventIfNew(params: {
 export async function markWebhookEventProcessed(id: string): Promise<void> {
   await db.webhookEvent.update({ where: { id }, data: { processedAt: new Date() } });
 }
+
+/**
+ * Used by the refunds module (never the reverse — Architecture.md §4: "refunds
+ * calls payments, not the other way around") to find the actual Razorpay
+ * payment id to refund against. The most recent *captured* attempt is
+ * authoritative — a captured payment can't later become uncaptured, so
+ * "most recent" and "the one that's actually captured" always agree.
+ */
+export async function findCapturedPaymentForOrder(
+  orderId: string,
+): Promise<{ paymentId: string; razorpayPaymentId: string } | null> {
+  const attempt = await db.paymentAttempt.findFirst({
+    where: { status: 'captured', payment: { orderId } },
+    orderBy: { attemptedAt: 'desc' },
+    select: { paymentId: true, razorpayPaymentId: true },
+  });
+  if (!attempt || !attempt.razorpayPaymentId) return null;
+  return { paymentId: attempt.paymentId, razorpayPaymentId: attempt.razorpayPaymentId };
+}

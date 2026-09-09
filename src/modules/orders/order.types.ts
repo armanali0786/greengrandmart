@@ -1,3 +1,5 @@
+import type { ShipmentView } from '@/modules/shipping/shipping.types';
+
 // Full enum per the DB CHECK constraint (chk_orders_status) — not every
 // value has a route that can reach it yet: return/refund transitions
 // (Phase 8) and payment-confirmation transitions (Phase 7's webhook) are
@@ -44,6 +46,8 @@ export interface OrderItemView {
   taxAmount: number;
   quantity: number;
   lineTotal: number;
+  /** null = no return has ever been requested for this item. */
+  returnStatus: string | null;
 }
 
 export interface OrderStatusEvent {
@@ -78,8 +82,7 @@ export interface OrderDetail {
   placedAt: string;
   items: OrderItemView[];
   statusHistory: OrderStatusEvent[];
-  // Shipment tracking (carrier/trackingNumber) is Phase 8's "Shipping" —
-  // the `shipments` table exists but nothing creates rows in it yet.
+  shipment: ShipmentView | null;
   canCancel: boolean;
 }
 

@@ -12,6 +12,8 @@ import { verifyPaymentSignature, verifyWebhookSignature } from '@/modules/paymen
 import { PaymentVerificationError } from '@/modules/payments/payment.errors';
 import * as repo from '@/modules/payments/payment.repository';
 import type { ConfirmPaymentInput } from '@/modules/payments/payment.schema';
+import { handleRefundWebhookEvent } from '@/modules/refunds/refund.service';
+import { ensureInvoiceForOrder } from '@/modules/invoices/invoice.service';
 
 // ── Client-confirm (necessary, not sufficient) ─────────────────────────────
 
@@ -126,11 +128,19 @@ interface RazorpayPaymentEntity {
   status: string;
 }
 
+interface RazorpayRefundEntity {
+  id: string;
+  payment_id: string;
+  amount: number;
+  status: string;
+}
+
 interface RazorpayWebhookPayload {
   id?: string;
   event: string;
   payload: {
     payment?: { entity: RazorpayPaymentEntity };
+    refund?: { entity: RazorpayRefundEntity };
   };
 }
 
@@ -166,7 +176,9 @@ export async function processWebhookEvent(
   // Razorpay includes a top-level event id (`evt_...`) on real deliveries;
   // fall back to a composite key only for malformed/synthetic payloads that
   // omit it, so idempotency still degrades safely rather than throwing.
-  const eventId = body.id ?? `${body.event}:${body.payload?.payment?.entity?.id ?? 'unknown'}`;
+  const eventId =
+    body.id ??
+    `${body.event}:${body.payload?.payment?.entity?.id ?? body.payload?.refund?.entity?.id ?? 'unknown'}`;
 
   const webhookEventId = await repo.insertWebhookEventIfNew({
     provider: WEBHOOK_PROVIDER,
@@ -203,16 +215,34 @@ async function handleEvent(body: RazorpayWebhookPayload): Promise<void> {
       return handlePaymentAuthorized(body);
     case 'payment.failed':
       return handlePaymentFailed(body);
+    case 'refund.processed':
+      return handleRefundEvent(body, 'processed');
+    case 'refund.failed':
+      return handleRefundEvent(body, 'failed');
     default:
-      // Includes refund.* events — refunds are Phase 8's module
-      // (modules/refunds calling payments.refundPayment(), per
-      // Architecture.md §4's dependency graph). The webhook_events row is
-      // already recorded above for idempotency/audit; nothing more to do
-      // until that module exists. Any other/unrecognized event type is
-      // likewise safely ignored — Razorpay adds new event types over time
-      // and an unhandled one must never fail the webhook.
+      // Any other/unrecognized event type is safely ignored — Razorpay adds
+      // new event types over time and an unhandled one must never fail the
+      // webhook. The webhook_events row is already recorded above for
+      // idempotency/audit either way.
       return;
   }
+}
+
+/**
+ * Refunds are owned by `modules/refunds`, not `payments` — this route just
+ * dispatches, since `payments` owns the one webhook endpoint for the whole
+ * Razorpay integration. See refund.service.ts's handleRefundWebhookEvent for
+ * the actual state logic (docs/Product_Spec_Requirements.md §6.3's
+ * out-of-order-delivery note: a refund.processed for a payment/order this
+ * process doesn't recognize yet is safely a no-op, not an error, there).
+ */
+async function handleRefundEvent(
+  body: RazorpayWebhookPayload,
+  status: 'processed' | 'failed',
+): Promise<void> {
+  const entity = body.payload.refund?.entity;
+  if (!entity) return;
+  await handleRefundWebhookEvent({ providerRefundId: entity.id, status, changedBy: null });
 }
 
 async function handlePaymentCaptured(body: RazorpayWebhookPayload): Promise<void> {
@@ -224,15 +254,15 @@ async function handlePaymentCaptured(body: RazorpayWebhookPayload): Promise<void
     return;
   }
 
-  await db.$transaction(async (tx) => {
+  const confirmed = await db.$transaction(async (tx) => {
     const order = await orderRepo.findOrderByIdForUpdate(tx, payment.orderId);
-    if (!order) return;
+    if (!order) return false;
     const fromStatus = order.status as OrderStatus;
     // Belt-and-suspenders beyond the webhook_events uniqueness check: a
     // second captured-style event for an already-confirmed order (or any
     // order no longer in pending_payment) must not double-confirm it or
     // double-convert its reservations.
-    if (fromStatus !== 'pending_payment' || !canTransition(fromStatus, 'confirmed')) return;
+    if (fromStatus !== 'pending_payment' || !canTransition(fromStatus, 'confirmed')) return false;
 
     await repo.updatePaymentStatus(tx, payment.id, 'captured');
     await repo.createPaymentAttemptRow(tx, {
@@ -251,7 +281,30 @@ async function handlePaymentCaptured(body: RazorpayWebhookPayload): Promise<void
       note: 'Payment captured (Razorpay webhook).',
     });
     await convertReservationsForOrder(tx, payment.orderId);
+    return true;
   });
+
+  // Deliberately outside the transaction — Storage I/O shouldn't hold a DB
+  // transaction open, same reasoning as checkout.service.ts's payment-
+  // provider call. See invoice.service.ts's doc comment on why this is a
+  // direct call rather than a job_queue enqueue (Phase 9 territory).
+  //
+  // Deliberately swallowed, not rethrown: the order is already correctly
+  // confirmed above by this point, which is the load-bearing outcome this
+  // webhook event must be marked processed for. A Storage hiccup here is a
+  // secondary side effect — letting it flip the whole event back to
+  // "processing_error" (webhook.processWebhookEvent's catch) would make a
+  // future identical delivery a no-op forever (webhook_events' event_id is
+  // already recorded), permanently losing the retry rather than just
+  // degrading invoice generation. Flagged for the same manual-reconciliation
+  // path docs/Security.md §13 already calls for (Phase 12, not built yet).
+  if (confirmed) {
+    try {
+      await ensureInvoiceForOrder(payment.orderId);
+    } catch (e) {
+      console.error(`Invoice generation failed for order ${payment.orderId}`, e);
+    }
+  }
 }
 
 async function handlePaymentAuthorized(body: RazorpayWebhookPayload): Promise<void> {

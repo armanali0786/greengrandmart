@@ -362,6 +362,7 @@ model Order {
   refunds            Refund[]
   shipments          Shipment[]
   returns            Return[]
+  invoice            Invoice?
   couponRedemptions  CouponRedemption[]
   reservations       InventoryReservation[]
 
@@ -530,6 +531,25 @@ model Return {
 
   @@index([orderId], map: "idx_returns_order")
   @@map("returns")
+}
+
+// Not in Data_Model_DB_Schema.md — that doc never specifies how an
+// invoice's generated PDF is located again after the fact, only that one
+// gets generated and stored in Firebase Storage (docs/Architecture.md
+// §5.3). Without this row, `GET /orders/:id/invoice` would have no way to
+// know whether a PDF already exists at a deterministic path or needs
+// (re)generating, and no admin-visible generation timestamp. Documented in
+// a `Data_Model_DB_Schema.md` §13 addendum, per AGENTS.md §5's doc-sync
+// rule (same pattern as the Phase 2 `rate_limit_events` addition).
+model Invoice {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId     String   @unique @map("order_id") @db.Uuid
+  storagePath String   @map("storage_path")
+  generatedAt DateTime @default(now()) @map("generated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@map("invoices")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

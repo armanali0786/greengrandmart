@@ -45,6 +45,8 @@ const serverEnvSchema = z.object({
   // Business timing rules
   RESERVATION_TTL_MINUTES: z.coerce.number().int().positive().default(15),
   OTP_EXPIRY_SECONDS: z.coerce.number().int().positive().default(300),
+  // PRD.md §14 open question, confirmed by the business at Phase 8: 7 days.
+  RETURN_WINDOW_DAYS: z.coerce.number().int().positive().default(7),
 
   // Shipping fee (paise) — Product_Spec_Requirements.md §7.2: "v1 can start
   // with flat rate + free-above-threshold" (zone/weight-based rules and

@@ -71,11 +71,32 @@ export async function verifyFirebaseToken(req: NextRequest): Promise<DecodedIdTo
  */
 export async function getSessionUser(req: NextRequest): Promise<SessionUser> {
   const decoded = await verifyFirebaseToken(req);
+  return resolveSessionUser(decoded);
+}
+
+async function resolveSessionUser(decoded: DecodedIdToken): Promise<SessionUser> {
   const user = await findUserByFirebaseUid(decoded.uid);
   if (!user) {
     throw new UnauthenticatedError('Session not established. Please sign in again.');
   }
   return user;
+}
+
+/**
+ * Same verification as getSessionUser(), but from a raw token string
+ * instead of a request's Authorization header — only for the emulator-only
+ * invoice dev-download route (modules/invoices), which a plain browser
+ * navigation reaches without any custom headers. Never used in production
+ * (that route 404s unless NEXT_PUBLIC_FIREBASE_USE_EMULATOR is set).
+ */
+export async function getSessionUserFromToken(token: string): Promise<SessionUser> {
+  let decoded: DecodedIdToken;
+  try {
+    decoded = await firebaseAdminAuth.verifyIdToken(token);
+  } catch {
+    throw new UnauthenticatedError();
+  }
+  return resolveSessionUser(decoded);
 }
 
 /**

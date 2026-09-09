@@ -9,6 +9,13 @@ import { orderStatusBadgeClass, orderStatusLabel } from '@/lib/order-status-disp
 import type { OrderDetail, OrderStatus } from '@/modules/orders/order.types';
 import { Button } from '@/components/ui/Button';
 
+const SHIPMENT_STATUSES: ReadonlySet<OrderStatus> = new Set([
+  'packed',
+  'shipped',
+  'out_for_delivery',
+  'delivered',
+]);
+
 const STATUS_OPTIONS: OrderStatus[] = [
   'pending_payment',
   'payment_failed',
@@ -32,6 +39,9 @@ export default function AdminOrderDetailPage({ params }: PageProps<'/admin/order
   const queryClient = useQueryClient();
   const [nextStatus, setNextStatus] = useState<OrderStatus | ''>('');
   const [note, setNote] = useState('');
+  const [carrier, setCarrier] = useState('');
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [estimatedDelivery, setEstimatedDelivery] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const { data: order, isLoading } = useQuery({
@@ -39,17 +49,34 @@ export default function AdminOrderDetailPage({ params }: PageProps<'/admin/order
     queryFn: () => authFetch<OrderDetail>(`/api/admin/orders/${id}`),
   });
 
+  const shipmentRelevant = nextStatus !== '' && SHIPMENT_STATUSES.has(nextStatus);
+  const shipment =
+    carrier.trim() || trackingNumber.trim() || estimatedDelivery
+      ? {
+          ...(carrier.trim() && { carrier: carrier.trim() }),
+          ...(trackingNumber.trim() && { trackingNumber: trackingNumber.trim() }),
+          ...(estimatedDelivery && { estimatedDelivery }),
+        }
+      : undefined;
+
   const updateStatus = useMutation({
     mutationFn: () =>
       authFetch<OrderDetail>(`/api/admin/orders/${id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: nextStatus, ...(note.trim() && { note: note.trim() }) }),
+        body: JSON.stringify({
+          status: nextStatus,
+          ...(note.trim() && { note: note.trim() }),
+          ...(shipmentRelevant && shipment && { shipment }),
+        }),
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(['admin', 'orders', id], updated);
       queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
       setNextStatus('');
       setNote('');
+      setCarrier('');
+      setTrackingNumber('');
+      setEstimatedDelivery('');
       setError(null);
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not update status.'),
@@ -130,6 +157,26 @@ export default function AdminOrderDetailPage({ params }: PageProps<'/admin/order
         </section>
       </div>
 
+      {order.shipment && (
+        <section className="border-border bg-surface mt-6 rounded-[10px] border p-4">
+          <h2 className="text-foreground mb-3 text-sm font-semibold">Shipment</h2>
+          <p className="text-muted text-sm">
+            {order.shipment.carrier ?? 'Carrier not yet assigned'}
+            {order.shipment.trackingNumber && ` · ${order.shipment.trackingNumber}`}
+          </p>
+          {order.shipment.estimatedDelivery && (
+            <p className="text-muted text-sm">
+              Estimated delivery:{' '}
+              {new Date(order.shipment.estimatedDelivery).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </p>
+          )}
+        </section>
+      )}
+
       <section className="border-border bg-surface mt-6 rounded-[10px] border p-4">
         <h2 className="text-foreground mb-3 text-sm font-semibold">Status timeline</h2>
         <ol className="flex flex-col gap-2">
@@ -200,6 +247,50 @@ export default function AdminOrderDetailPage({ params }: PageProps<'/admin/order
             Update
           </Button>
         </div>
+        {shipmentRelevant && (
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label htmlFor="carrier" className="text-foreground mb-1.5 block text-sm font-medium">
+                Carrier
+              </label>
+              <input
+                id="carrier"
+                value={carrier}
+                onChange={(e) => setCarrier(e.target.value)}
+                className="border-border bg-surface h-11 w-full rounded-[10px] border px-3 text-sm"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="trackingNumber"
+                className="text-foreground mb-1.5 block text-sm font-medium"
+              >
+                Tracking number
+              </label>
+              <input
+                id="trackingNumber"
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                className="border-border bg-surface h-11 w-full rounded-[10px] border px-3 text-sm"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="estimatedDelivery"
+                className="text-foreground mb-1.5 block text-sm font-medium"
+              >
+                Estimated delivery
+              </label>
+              <input
+                id="estimatedDelivery"
+                type="date"
+                value={estimatedDelivery}
+                onChange={(e) => setEstimatedDelivery(e.target.value)}
+                className="border-border bg-surface h-11 w-full rounded-[10px] border px-3 text-sm"
+              />
+            </div>
+          </div>
+        )}
         {error && (
           <p role="alert" className="bg-error-bg text-error mt-3 rounded-[10px] px-3 py-2 text-sm">
             {error}

@@ -4,14 +4,39 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authFetch, ApiError } from '@/lib/api-client';
+import { getFirebaseAuth } from '@/lib/firebase-client';
 import { toRupeeDisplay } from '@/lib/money';
 import { orderStatusBadgeClass, orderStatusLabel } from '@/lib/order-status-display';
 import { RAZORPAY_STUB_KEY_ID } from '@/lib/payment-constants';
 import { openRazorpayCheckout } from '@/lib/razorpay-checkout';
-import type { OrderDetail } from '@/modules/orders/order.types';
+import type { OrderDetail, OrderItemView, OrderStatus } from '@/modules/orders/order.types';
 import type { RetryPaymentResult } from '@/modules/payments/payment.service';
+import type { ReturnView } from '@/modules/returns/return.types';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Modal } from '@/components/ui/Modal';
+
+const RETURN_REASON_LABELS: Record<string, string> = {
+  damaged: 'Item arrived damaged',
+  wrong_item: 'Wrong item received',
+  not_as_described: 'Not as described',
+  other: 'Other',
+};
+
+const RETURN_STATUS_LABELS: Record<string, string> = {
+  requested: 'Return Requested',
+  approved: 'Return Approved',
+  rejected: 'Return Rejected',
+  item_received: 'Return Received',
+  completed: 'Return Completed',
+};
+
+/** No invoice exists yet for an order that never reached `confirmed` (docs/Architecture.md §5.2/§5.3: generated on payment.captured). */
+const UNCONFIRMED_STATUSES: ReadonlySet<OrderStatus> = new Set([
+  'pending_payment',
+  'payment_failed',
+  'cancelled',
+]);
 
 export default function OrderDetailPage({ params }: PageProps<'/account/orders/[id]'>) {
   const { id } = use(params);
@@ -19,6 +44,9 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryInfo, setRetryInfo] = useState<string | null>(null);
+  const [returningItem, setReturningItem] = useState<OrderItemView | null>(null);
+  const [returnReason, setReturnReason] = useState('damaged');
+  const [returnNote, setReturnNote] = useState('');
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['orders', id],
@@ -68,6 +96,40 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
     onError: (e) =>
       setError(e instanceof ApiError ? e.message : 'Could not start a new payment attempt.'),
   });
+
+  const returnMutation = useMutation({
+    mutationFn: () =>
+      authFetch<ReturnView>(`/api/orders/${id}/items/${returningItem!.id}/return`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: returnReason, ...(returnNote && { note: returnNote }) }),
+      }),
+    onSuccess: () => {
+      setReturningItem(null);
+      setReturnNote('');
+      queryClient.invalidateQueries({ queryKey: ['orders', id] });
+    },
+    onError: (e) =>
+      setError(e instanceof ApiError ? e.message : 'Could not submit the return request.'),
+  });
+
+  // docs/API_Spec.md: "Signed download URL for invoice PDF." In production
+  // that URL needs no extra auth (the signature is the auth); the local
+  // Storage-emulator fallback route can't accept an Authorization header on
+  // a plain navigation, so the current ID token travels as a query param
+  // instead — see invoice/dev-download/route.ts.
+  async function handleDownloadInvoice() {
+    try {
+      const { url } = await authFetch<{ url: string }>(`/api/orders/${id}/invoice`);
+      if (url.startsWith('/api/')) {
+        const token = await getFirebaseAuth().currentUser?.getIdToken();
+        window.open(`${url}?token=${token}`, '_blank');
+      } else {
+        window.open(url, '_blank');
+      }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Could not download the invoice.');
+    }
+  }
 
   if (isLoading) {
     return <div className="bg-primary-50 h-96 animate-pulse rounded-[10px]" />;
@@ -123,6 +185,50 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
         </ol>
       </section>
 
+      {order.shipment && (
+        <section className="border-border bg-surface rounded-[10px] border p-4">
+          <h3 className="text-foreground mb-3 text-sm font-semibold">Shipment tracking</h3>
+          <p className="text-muted text-sm">
+            {order.shipment.carrier ?? 'Carrier not yet assigned'}
+            {order.shipment.trackingNumber && ` · ${order.shipment.trackingNumber}`}
+          </p>
+          {order.shipment.estimatedDelivery && (
+            <p className="text-muted text-sm">
+              Estimated delivery:{' '}
+              {new Date(order.shipment.estimatedDelivery).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </p>
+          )}
+          {order.shipment.trackingEvents.length > 0 && (
+            <ol className="mt-3 flex flex-col gap-1.5">
+              {order.shipment.trackingEvents.map((event, i) => (
+                <li key={i} className="text-muted flex items-center gap-2 text-xs">
+                  <span
+                    className="bg-primary-600 h-1.5 w-1.5 shrink-0 rounded-full"
+                    aria-hidden="true"
+                  />
+                  <span className="text-foreground font-medium">
+                    {orderStatusLabel(event.status as OrderStatus) || event.status}
+                  </span>
+                  <span>
+                    —{' '}
+                    {new Date(event.occurredAt).toLocaleString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      )}
+
       <section className="border-border bg-surface rounded-[10px] border p-4">
         <h3 className="text-foreground mb-3 text-sm font-semibold">Items</h3>
         <div className="divide-border divide-y">
@@ -139,6 +245,21 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
                     : ''}
                   {' · '}Qty {item.quantity}
                 </p>
+                {item.returnStatus ? (
+                  <p className="text-accent-600 mt-1 text-xs font-medium">
+                    {RETURN_STATUS_LABELS[item.returnStatus] ?? item.returnStatus}
+                  </p>
+                ) : (
+                  order.status === 'delivered' && (
+                    <button
+                      type="button"
+                      className="text-primary-700 mt-1 text-xs font-medium hover:underline"
+                      onClick={() => setReturningItem(item)}
+                    >
+                      Request return
+                    </button>
+                  )
+                )}
               </div>
               <span className="text-foreground text-sm font-semibold">
                 {toRupeeDisplay(item.lineTotal)}
@@ -204,10 +325,15 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
         </p>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <Link href="/account/orders">
           <Button variant="secondary">Back to orders</Button>
         </Link>
+        {!UNCONFIRMED_STATUSES.has(order.status) && (
+          <Button variant="secondary" onClick={handleDownloadInvoice}>
+            Download invoice
+          </Button>
+        )}
         {order.status === 'pending_payment' && (
           <Button loading={retryMutation.isPending} onClick={() => retryMutation.mutate()}>
             Retry payment
@@ -228,6 +354,57 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
         description={`Order ${order.orderNumber} will be cancelled and any reserved stock released. This can't be undone.`}
         confirmLabel="Cancel order"
       />
+
+      <Modal
+        open={!!returningItem}
+        onClose={() => setReturningItem(null)}
+        title={`Request return: ${returningItem?.productNameSnapshot ?? ''}`}
+      >
+        <div className="flex flex-col gap-4">
+          <div>
+            <label
+              htmlFor="returnReason"
+              className="text-foreground mb-1.5 block text-sm font-medium"
+            >
+              Reason
+            </label>
+            <select
+              id="returnReason"
+              value={returnReason}
+              onChange={(e) => setReturnReason(e.target.value)}
+              className="border-border bg-surface h-11 w-full rounded-[10px] border px-3 text-sm"
+            >
+              {Object.entries(RETURN_REASON_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="returnNote"
+              className="text-foreground mb-1.5 block text-sm font-medium"
+            >
+              Note (optional)
+            </label>
+            <textarea
+              id="returnNote"
+              value={returnNote}
+              onChange={(e) => setReturnNote(e.target.value)}
+              rows={3}
+              className="border-border bg-surface w-full rounded-[10px] border px-3 py-2 text-sm"
+            />
+          </div>
+          <Button
+            className="w-full"
+            loading={returnMutation.isPending}
+            onClick={() => returnMutation.mutate()}
+          >
+            Submit return request
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

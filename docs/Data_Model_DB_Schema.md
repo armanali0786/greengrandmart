@@ -261,8 +261,13 @@ CREATE TABLE carts (
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX idx_carts_user ON carts(user_id) WHERE status = 'active';
-CREATE INDEX idx_carts_session ON carts(session_id) WHERE status = 'active';
+-- Phase 4 correction: both are UNIQUE, not plain, partial indexes — "one
+-- active cart per owner" (guest or logged-in) is enforced at the DB level,
+-- closing a race where two concurrent get-or-create-cart requests for the
+-- same owner could otherwise both succeed and silently split one owner's
+-- cart in two (migration `unique_active_cart_per_owner`).
+CREATE UNIQUE INDEX idx_carts_user ON carts(user_id) WHERE status = 'active';
+CREATE UNIQUE INDEX idx_carts_session ON carts(session_id) WHERE status = 'active';
 
 CREATE TABLE cart_items (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -446,7 +451,7 @@ CREATE INDEX idx_refunds_order ON refunds(order_id);
 CREATE TABLE shipments (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id            uuid NOT NULL REFERENCES orders(id) ON DELETE RESTRICT,
-  provider            text NOT NULL,
+  provider            text,                    -- NULLable (Phase 8 correction, see below)
   shipment_id         text,
   tracking_number     text,
   status              text NOT NULL DEFAULT 'created',
@@ -479,7 +484,35 @@ CREATE TABLE returns (
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_returns_order ON returns(order_id);
+
+CREATE TABLE invoices (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id      uuid NOT NULL UNIQUE REFERENCES orders(id) ON DELETE RESTRICT,
+  storage_path  text NOT NULL,
+  generated_at  timestamptz NOT NULL DEFAULT now()
+);
 ```
+
+> **Phase 8 corrections/additions:**
+>
+> - `shipments.provider` is nullable here, not `NOT NULL` as originally
+>   drafted — Product_Spec_Requirements.md §7.1 explicitly allows a shipment
+>   to be "created by admin (**manually** or via courier integration)," and
+>   `modules/shipping/shipping-provider.ts`'s `ManualShippingProvider` (the
+>   only adapter that exists — no live courier vendor has been chosen, see
+>   `PRD.md` §14) has no provider name to record. The live schema (migrated
+>   in Phase 1, before this table was actually used) already had it
+>   nullable; this was a doc/schema drift this phase reconciled in the
+>   doc's favor of the schema, not a new migration.
+> - `invoices` is new this phase — not in the original ERD. Architecture.md
+>   §5.3 specifies a PDF gets generated and stored in Firebase Storage but
+>   never says how it's found again afterward; this row is what
+>   `GET /orders/:id/invoice` (`modules/invoices/invoice.service.ts`) looks
+>   up before deciding whether to (re)generate. `order_id UNIQUE` — one
+>   invoice per order, generated once when the order is first confirmed
+>   (payment captured), never regenerated even if line items could
+>   theoretically be inspected again (they can't drift — see §5.4's
+>   immutable-snapshot rule — so there's never a reason to).
 
 ---
 

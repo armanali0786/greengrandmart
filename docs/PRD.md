@@ -169,7 +169,7 @@ Next.js (frontend + backend, single codebase) · Postgres via Neon · Prisma ORM
 
 ## 14. Open Questions
 
-- What are the actual shipping courier(s) to integrate with at launch?
-- Confirmed COD availability rules (pincode-based? order value cap?)
-- Return window policy (days, condition requirements)?
-- Who reviews/approves the final GST configuration before go-live?
+- What are the actual shipping courier(s) to integrate with at launch? (Still open — Phase 8 built the `ShippingProvider` interface + a `ManualShippingProvider` adapter, per Product_Spec_Requirements.md §7.1's "created by admin (manually or via courier integration)"; no live courier vendor is wired up, and none should be added without this question being answered first — see AGENTS.md §8.)
+- Confirmed COD availability rules (pincode-based? order value cap?) — still open; unrelated to Phase 8, blocks COD checkout itself (Phase 6/9 territory).
+- ~~Return window policy (days, condition requirements)?~~ **Resolved at Phase 8: 7 days after `Delivered`** (`RETURN_WINDOW_DAYS` env var). "Condition requirements" are handled via the existing reason dropdown (damaged / wrong item / not as described / other + note) — no further condition logic was specified or built.
+- Who reviews/approves the final GST configuration before go-live? — still open; a compliance/legal sign-off, not a code change.

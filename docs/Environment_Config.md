@@ -95,6 +95,7 @@
 | `COD_MAX_ORDER_VALUE`     | Server-only | Optional cap on COD-eligible order value, if the business rule from `PRD.md` Section 14 is confirmed                 |
 | `SHIPPING_FLAT_FEE`       | Server-only | Flat shipping fee in paise (Phase 5's minimal v1 rule per `Product_Spec_Requirements.md` §7.2; default ₹49)          |
 | `FREE_SHIPPING_THRESHOLD` | Server-only | Cart value (paise, post-discount) at/above which shipping is free (default ₹999)                                     |
+| `RETURN_WINDOW_DAYS`      | Server-only | Days after `Delivered` a customer may request a return (Phase 8, `PRD.md` §14 confirmed value: 7)                    |
 
 ---
 

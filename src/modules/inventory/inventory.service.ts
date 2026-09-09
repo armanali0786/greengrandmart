@@ -151,6 +151,29 @@ export async function convertReservationsForOrder(tx: TxClient, orderId: string)
   }
 }
 
+/**
+ * Restocks a single returned item's variant — docs/Product_Spec_Requirements.md
+ * §8.3: only called once admin marks a return `item_received` (physically
+ * back in hand), never on approval alone. Increments `available_qty`
+ * directly (no reservation exists to release at this point — the sale was
+ * already converted at payment-capture time) and logs a 'return' movement
+ * for the admin inventory-history trail.
+ */
+export async function restockReturnedItem(
+  tx: TxClient,
+  params: { variantId: string; quantity: number; orderId: string },
+): Promise<void> {
+  await repo.lockInventoryRow(tx, params.variantId);
+  await repo.applyInventoryDelta(tx, params.variantId, { availableQty: params.quantity });
+  await repo.createMovementRow(tx, {
+    variantId: params.variantId,
+    type: 'return',
+    quantity: params.quantity,
+    referenceType: 'order',
+    referenceId: params.orderId,
+  });
+}
+
 function movementQuantityFor(input: AdjustStockInput): number {
   if (input.type === 'restock') return input.quantity;
   if (input.type === 'damage') return -input.quantity;

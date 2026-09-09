@@ -18,6 +18,7 @@ import { InvalidOrderStateError } from '@/modules/orders/order.errors';
 import { ForbiddenError } from '@/modules/auth/auth.errors';
 
 async function deleteTestOrder(orderId: string): Promise<void> {
+  await db.invoice.deleteMany({ where: { orderId } });
   await db.paymentAttempt.deleteMany({ where: { payment: { orderId } } });
   await db.payment.deleteMany({ where: { orderId } });
   await db.couponRedemption.deleteMany({ where: { orderId } });
@@ -213,6 +214,12 @@ describe('payment.service.processWebhookEvent', () => {
         where: { orderId: result.orderId },
       });
       expect(reservation.status).toBe('converted');
+
+      // docs/Architecture.md §5.2/§5.3: invoice generation is triggered by
+      // payment.captured, called directly from handlePaymentCaptured
+      // (Phase 8 — see invoice.service.ts's ensureInvoiceForOrder).
+      const invoice = await db.invoice.findUniqueOrThrow({ where: { orderId: result.orderId } });
+      expect(invoice.storagePath).toBe(`invoices/${result.orderId}.pdf`);
     } finally {
       await deleteTestOrder(result.orderId);
       await deleteTestProduct(productId);

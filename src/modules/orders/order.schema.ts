@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { shipmentDetailsSchema } from '@/modules/shipping/shipping.schema';
 
 const orderStatusValues = [
   'pending_payment',
@@ -31,11 +32,15 @@ export const checkoutSchema = z.object({
 });
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
-// trackingNumber isn't accepted yet — it belongs on `shipments`
-// (Phase 8's "Shipping"), which nothing creates rows in until then.
+// docs/API_Spec.md's own sample body for this endpoint includes
+// `trackingNumber` alongside `status` — shipmentDetailsSchema folds in
+// carrier/estimatedDelivery too, all optional and only meaningful once the
+// order moves into a shipment-relevant status (shipment.service.ts decides
+// that, not this schema).
 export const updateOrderStatusSchema = z.object({
   status: z.enum(orderStatusValues),
   note: z.string().trim().max(1000).optional(),
+  shipment: shipmentDetailsSchema.optional(),
 });
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
 
