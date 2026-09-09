@@ -458,8 +458,8 @@ This means checkout responds instantly to the customer — it never waits on an 
 - [ ] Role check (`customer`/`staff`/`admin`) re-read from DB on every admin request — never trusted from a client-supplied field
 - [ ] All money math happens in `modules/pricing` only — no other file computes a total
 - [ ] Stock changes only through `modules/inventory`, always inside a DB transaction with row locks
-- [ ] Razorpay signature verified server-side on both the client-confirm step AND the webhook
-- [ ] `webhook_events.event_id` unique constraint enforces webhook idempotency
+- [x] Razorpay signature verified server-side on both the client-confirm step AND the webhook
+- [x] `webhook_events.event_id` unique constraint enforces webhook idempotency
 - [ ] OTP codes hashed at rest, rate-limited, never echoed back in any response
 - [ ] Coupon redemption uniqueness enforced by DB constraint, not app-level checks
 - [ ] All secrets (Razorpay, MSG91, Resend, Firebase Admin JSON, DB URL) in Vercel encrypted env vars — nothing in `NEXT_PUBLIC_*`

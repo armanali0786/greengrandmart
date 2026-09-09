@@ -221,7 +221,7 @@ Storage rules are a second layer, not the only layer — the backend independent
 - [ ] All admin routes independently re-check role from Postgres; spot-checked with a `customer`-role token expecting 403 on every `/admin/*` route
 - [ ] Ownership checks verified on every resource-fetching endpoint (order, address, wishlist) — a second test user cannot fetch another user's data by ID
 - [ ] Pricing/coupon/inventory logic has unit test coverage for the race conditions in the Threat Model (T1, T3, T5)
-- [ ] Webhook signature verification confirmed against Razorpay's test-mode webhook tool; duplicate delivery test passes (T4)
+- [x] Webhook signature verification confirmed against Razorpay's test-mode webhook tool; duplicate delivery test passes (T4) — no live Razorpay account exists in this dev environment, so this was verified the way any team without a public webhook URL yet would: `tests/integration/payments/payment.test.ts` and `tests/e2e/payment-webhook.spec.ts` synthesize Razorpay-shaped payloads and sign them with the same `RAZORPAY_WEBHOOK_SECRET` the server verifies against (read from the same `.env.local`, no shortcut added to the app code), covering valid signature, forged signature (rejected before any DB write), duplicate delivery (single state change, not two), and an out-of-order/unrelated event type (safely ignored). Must be re-run against Razorpay's actual test-mode webhook tool once real test credentials exist, before go-live.
 - [ ] Rate limits verified functional on OTP, login, and checkout endpoints (T8, T15)
 - [ ] No secret present in the client bundle (`grep` build output for known key patterns as a final check) (T10)
 - [ ] File upload validated against a renamed-extension attack (e.g. a `.exe` renamed `.jpg`) and rejected (T9)

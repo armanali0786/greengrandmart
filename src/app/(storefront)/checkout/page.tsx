@@ -10,8 +10,11 @@ import { toRupeeDisplay } from '@/lib/money';
 import { cn } from '@/lib/cn';
 import { CouponInput, type AppliedCoupon } from '@/components/storefront/CouponInput';
 import { Button } from '@/components/ui/Button';
+import { RAZORPAY_STUB_KEY_ID } from '@/lib/payment-constants';
+import { openRazorpayCheckout } from '@/lib/razorpay-checkout';
 import type { AddressRecord } from '@/modules/auth/address.repository';
 import type { OrderTotalBreakdown } from '@/modules/pricing/pricing.types';
+import type { CheckoutResult } from '@/modules/orders/checkout.service';
 
 // docs/UX_UI_Spec.md §4.5: single sectioned page (address → payment method
 // → coupon → summary), not a multi-step wizard. COD is shown but disabled
@@ -66,9 +69,16 @@ export default function CheckoutPage() {
       : 'Could not calculate totals.'
     : null;
 
+  // docs/Architecture.md §5.2 steps 2-3: order + Razorpay order are created
+  // first (pending_payment), THEN the client opens the Razorpay widget — a
+  // dismissed/failed widget still leaves a valid, retryable order behind, so
+  // we always land on the order page afterward rather than blocking on the
+  // widget's outcome. Against the stub provider (no real Razorpay account
+  // configured — see payment-provider.ts) there's no real widget to open, so
+  // we skip straight to the order page, same as Phase 6's behavior.
   const placeOrder = useMutation({
     mutationFn: () =>
-      authFetch<{ orderId: string }>('/api/checkout', {
+      authFetch<CheckoutResult>('/api/checkout', {
         method: 'POST',
         body: JSON.stringify({
           shippingAddressId: selectedAddressId,
@@ -76,7 +86,29 @@ export default function CheckoutPage() {
           ...(appliedCoupon && { couponCode: appliedCoupon.code }),
         }),
       }),
-    onSuccess: (result) => router.push(`/account/orders/${result.orderId}`),
+    onSuccess: async (result) => {
+      if (result.keyId === RAZORPAY_STUB_KEY_ID) {
+        router.push(`/account/orders/${result.orderId}`);
+        return;
+      }
+      try {
+        await openRazorpayCheckout(result, {
+          onSuccess: async (payload) => {
+            try {
+              await authFetch('/api/checkout/confirm', {
+                method: 'POST',
+                body: JSON.stringify({ orderId: result.orderId, ...payload }),
+              });
+            } finally {
+              router.push(`/account/orders/${result.orderId}`);
+            }
+          },
+          onDismiss: () => router.push(`/account/orders/${result.orderId}`),
+        });
+      } catch {
+        router.push(`/account/orders/${result.orderId}`);
+      }
+    },
     onError: (e) =>
       setPlaceError(e instanceof ApiError ? e.message : 'Could not place your order.'),
   });

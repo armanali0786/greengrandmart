@@ -170,6 +170,26 @@ Alternate paths: `Payment Failed`, `Cancelled`, `Return Requested → Return App
 
 - Order marked `payment_failed`; customer can retry payment (new payment attempt against the same order) or the order auto-expires after 30 minutes and stock reservation is released
 
+> **Phase 7 implementation addendum:** this paragraph reads as two different
+> failure paths that can't both leave the order in the same state — "marked
+> payment_failed" implies a terminal write, but "customer can retry payment
+> against the same order" implies the order must still be pending_payment
+> (order-status-machine.ts's `payment_failed` has an empty transition list —
+> it's deliberately terminal, matching §5.2's status list where
+> `payment_failed` isn't shown re-entering the happy path). Resolved as: a
+> single failed Razorpay `payment.failed` webhook event does **not** flip
+> `orders.status` — the order stays `pending_payment` (reservation still
+> held) precisely so the customer can retry with a new payment attempt
+> against it, via `POST /orders/:id/retry-payment` (new this phase). The
+> order only ever reaches the terminal `payment_failed` through the
+> reservation-expiry cron sweep (`/cron/release-expired-reservations`,
+> Phase 6) once the reservation actually lapses — i.e. "or the order
+> auto-expires ... and stock reservation is released" is the terminal path;
+> a single failed attempt alone is not. The reservation TTL used is 15
+> minutes (`RESERVATION_TTL_MINUTES`, matching `Security.md` §7 and
+> `.env.example`), not the "30 minutes" written above — see the Phase 6
+> write-up for that reconciliation.
+
 ### 6.3 Webhook Handling
 
 - Every webhook verified via signature before processing

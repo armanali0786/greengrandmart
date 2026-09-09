@@ -138,6 +138,19 @@ export async function releaseReservationsForOrder(tx: TxClient, orderId: string)
   }
 }
 
+/**
+ * Converts every still-active reservation tied to an order into a completed
+ * sale — the payment-captured webhook's (Phase 7) counterpart to
+ * releaseReservationsForOrder. Same "look up ids fresh inside tx" shape so a
+ * caller can't accidentally convert the wrong order's stock.
+ */
+export async function convertReservationsForOrder(tx: TxClient, orderId: string): Promise<void> {
+  const ids = await repo.findActiveReservationIdsForOrder(tx, orderId);
+  for (const id of ids) {
+    await convertReservationToSale(tx, id);
+  }
+}
+
 function movementQuantityFor(input: AdjustStockInput): number {
   if (input.type === 'restock') return input.quantity;
   if (input.type === 'damage') return -input.quantity;

@@ -6,7 +6,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { toRupeeDisplay } from '@/lib/money';
 import { orderStatusBadgeClass, orderStatusLabel } from '@/lib/order-status-display';
+import { RAZORPAY_STUB_KEY_ID } from '@/lib/payment-constants';
+import { openRazorpayCheckout } from '@/lib/razorpay-checkout';
 import type { OrderDetail } from '@/modules/orders/order.types';
+import type { RetryPaymentResult } from '@/modules/payments/payment.service';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -15,6 +18,7 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
   const queryClient = useQueryClient();
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryInfo, setRetryInfo] = useState<string | null>(null);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['orders', id],
@@ -29,6 +33,40 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
       setCancelling(false);
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not cancel this order.'),
+  });
+
+  // docs/Product_Spec_Requirements.md §6.2: "customer can retry payment (new
+  // payment attempt against the same order)" while it's still
+  // pending_payment. Against the stub provider there's no real widget to
+  // open (see payment-provider.ts) — just confirm a new attempt was
+  // recorded, since there's nothing further this environment can complete.
+  const retryMutation = useMutation({
+    mutationFn: () =>
+      authFetch<RetryPaymentResult>(`/api/orders/${id}/retry-payment`, { method: 'POST' }),
+    onSuccess: async (result) => {
+      setError(null);
+      if (result.keyId === RAZORPAY_STUB_KEY_ID) {
+        setRetryInfo(
+          'A new payment attempt was created (test mode — no live payment gateway configured).',
+        );
+        return;
+      }
+      await openRazorpayCheckout(result, {
+        onSuccess: async (payload) => {
+          try {
+            await authFetch('/api/checkout/confirm', {
+              method: 'POST',
+              body: JSON.stringify({ orderId: id, ...payload }),
+            });
+          } finally {
+            queryClient.invalidateQueries({ queryKey: ['orders', id] });
+          }
+        },
+        onDismiss: () => {},
+      });
+    },
+    onError: (e) =>
+      setError(e instanceof ApiError ? e.message : 'Could not start a new payment attempt.'),
   });
 
   if (isLoading) {
@@ -160,11 +198,21 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
           {error}
         </p>
       )}
+      {retryInfo && (
+        <p className="bg-primary-50 text-primary-700 rounded-[10px] px-3 py-2 text-sm">
+          {retryInfo}
+        </p>
+      )}
 
       <div className="flex gap-3">
         <Link href="/account/orders">
           <Button variant="secondary">Back to orders</Button>
         </Link>
+        {order.status === 'pending_payment' && (
+          <Button loading={retryMutation.isPending} onClick={() => retryMutation.mutate()}>
+            Retry payment
+          </Button>
+        )}
         {order.canCancel && (
           <Button variant="destructive" onClick={() => setCancelling(true)}>
             Cancel order

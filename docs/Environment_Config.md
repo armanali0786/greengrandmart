@@ -45,6 +45,19 @@
 | `RAZORPAY_KEY_SECRET`         | Server-only, **secret** | Used for signature verification and server-side API calls                       |
 | `RAZORPAY_WEBHOOK_SECRET`     | Server-only, **secret** | Used to verify incoming webhook signatures — distinct from the key secret above |
 
+> **Phase 7 implementation note:** `modules/payments/payment-provider.ts`
+> selects `RazorpayPaymentProvider` (real Orders-API calls) whenever
+> `RAZORPAY_KEY_SECRET` is anything other than the literal placeholder
+> value shipped in `.env.example` (`"placeholder_not_configured"`), and
+> falls back to `StubPaymentProvider` (fakes a `razorpay_order_id` locally,
+> no network call) otherwise — the same shape as the Firebase Storage
+> emulator dev-fallback from Phase 3. Every real deployment must set a real
+> `RAZORPAY_KEY_SECRET`; local dev without one still runs end-to-end via the
+> stub. Signature verification (`modules/payments/signature.ts`) doesn't
+> depend on which provider created the order — it's pure HMAC math against
+> whatever secret is configured — so it works identically, and is fully
+> tested, even when the key secret is still the placeholder.
+
 ### 2.4 SMS (MSG91)
 
 | Variable                | Public?                 | Description                                                                            |
