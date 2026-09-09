@@ -75,11 +75,18 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Touch targets ≥ 44x44px (docs/UX_UI_Spec.md "Global rules") */
-button,
-a[role='button'],
-input,
-select,
-textarea {
+/*
+ * Touch targets ≥ 44x44px (docs/UX_UI_Spec.md "Global rules") is enforced
+ * per-component (Button.tsx's `size` variants, Input.tsx's fixed height),
+ * not with a blanket rule here — a global min-height on every <button>
+ * fought small elements that are correctly compact (an icon-only dismiss
+ * button, a text-styled inline action) and even conflicted with Button's own
+ * "sm" variant. Icon-only buttons get their target via padding, not height.
+ */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
   min-height: 44px;
 }

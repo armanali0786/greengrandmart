@@ -72,3 +72,53 @@ export async function findOrCreateUserForFirebaseUid(params: {
     return { user: existing, isNewUser: false };
   }
 }
+
+/**
+ * Updates name/phone only (docs/API_Spec.md `PATCH /auth/me`). Changing the
+ * phone number resets phoneVerified to false — a verification is tied to the
+ * specific number that was OTP-confirmed (modules/otp, Phase 9), not to the
+ * account in general, so a new number is unverified until proven otherwise.
+ */
+export async function updateUserProfile(
+  userId: string,
+  input: { name?: string; phone?: string },
+): Promise<SessionUser> {
+  const current = await db.user.findUniqueOrThrow({ where: { id: userId } });
+  const phoneChanged = input.phone !== undefined && input.phone !== current.phone;
+
+  const updated = await db.user.update({
+    where: { id: userId },
+    data: {
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.phone !== undefined && { phone: input.phone }),
+      ...(phoneChanged && { phoneVerified: false }),
+    },
+  });
+  return toSessionUser(updated);
+}
+
+/**
+ * Anonymizes PII per docs/Product_Spec_Requirements.md §1.4 and
+ * docs/Privacy_Data_Handling.md: name/email/phone stripped, `deleted_at` set
+ * (soft delete — the row itself is kept because orders.user_id is
+ * ON DELETE RESTRICT, and order records must be retained for accounting/tax
+ * purposes). Email is anonymized to a per-user-unique placeholder, not a
+ * fixed string, since `email` is UNIQUE and a second deletion would otherwise
+ * collide. Addresses are hard-deleted, not anonymized — they're not needed
+ * for tax records the way order line items are (Privacy_Data_Handling.md).
+ */
+export async function anonymizeUser(userId: string): Promise<void> {
+  await db.$transaction([
+    db.address.deleteMany({ where: { userId } }),
+    db.user.update({
+      where: { id: userId },
+      data: {
+        name: 'Deleted User',
+        email: `deleted+${userId}@deleted.invalid`,
+        phone: null,
+        phoneVerified: false,
+        deletedAt: new Date(),
+      },
+    }),
+  ]);
+}

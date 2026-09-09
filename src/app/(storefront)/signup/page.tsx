@@ -5,7 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  updateProfile,
+} from 'firebase/auth';
 import { getFirebaseAuth } from '@/lib/firebase-client';
 import { establishSession } from '@/lib/session-bridge';
 import { toAuthErrorMessage } from '@/lib/firebase-auth-errors';
@@ -38,6 +42,11 @@ export default function SignUpPage() {
       // until the next unrelated auth-state event.
       await credential.user.reload();
       await establishSession(credential.user, data.name);
+      // Per docs/Product_Spec_Requirements.md §1.1: account is usable
+      // immediately either way — this doesn't block navigation, it's a
+      // best-effort send (a failure here shouldn't strand the user on the
+      // signup form when their account was created successfully).
+      sendEmailVerification(credential.user).catch(() => {});
       router.push('/');
     } catch (error) {
       setFormError(toAuthErrorMessage(error));

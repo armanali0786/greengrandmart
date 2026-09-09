@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { signOut } from 'firebase/auth';
-import { Leaf } from 'lucide-react';
+import { Leaf, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getFirebaseAuth } from '@/lib/firebase-client';
 import { Button } from '@/components/ui/Button';
@@ -37,9 +37,15 @@ export function Header() {
             <div className="bg-primary-50 h-9 w-20 animate-pulse rounded-[10px]" />
           ) : firebaseUser ? (
             <>
-              <span className="text-muted hidden text-sm sm:inline">
-                {firebaseUser.displayName || firebaseUser.email}
-              </span>
+              <Link
+                href="/account"
+                className="text-foreground hover:text-primary-700 flex items-center gap-1.5 text-sm font-medium"
+              >
+                <User className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">
+                  {firebaseUser.displayName || firebaseUser.email}
+                </span>
+              </Link>
               <Button variant="secondary" size="sm" onClick={handleSignOut}>
                 Sign out
               </Button>

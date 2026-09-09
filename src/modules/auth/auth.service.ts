@@ -2,13 +2,18 @@ import type { NextRequest } from 'next/server';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { firebaseAdminAuth } from '@/lib/firebase-admin';
 import {
+  anonymizeUser,
   findOrCreateUserForFirebaseUid,
   findUserByFirebaseUid,
+  updateUserProfile,
 } from '@/modules/auth/auth.repository';
-import { UnauthenticatedError } from '@/modules/auth/auth.errors';
+import { ReauthenticationRequiredError, UnauthenticatedError } from '@/modules/auth/auth.errors';
+import type { UpdateProfileInput } from '@/modules/auth/auth.schema';
 import type { SessionUser } from '@/modules/auth/auth.types';
 import { countRecentEvents, recordEvent } from '@/lib/rate-limit';
 import { RateLimitedError } from '@/lib/errors';
+
+const REAUTH_MAX_AGE_SECONDS = 5 * 60;
 
 const LOGIN_LOCKOUT_WINDOW_SECONDS = 15 * 60;
 const LOGIN_LOCKOUT_MAX_FAILURES = 5;
@@ -94,4 +99,41 @@ export async function establishSession(
       decoded.email?.split('@')[0] ??
       'Customer',
   });
+}
+
+/** GET/PATCH /api/auth/me share this — resolves the caller to a fresh row. */
+export async function getMyProfile(req: NextRequest): Promise<SessionUser> {
+  return getSessionUser(req);
+}
+
+export async function updateMyProfile(
+  req: NextRequest,
+  input: UpdateProfileInput,
+): Promise<SessionUser> {
+  const user = await getSessionUser(req);
+  return updateUserProfile(user.id, input);
+}
+
+/**
+ * DELETE /api/auth/me: anonymizes the Postgres row and deletes the Firebase
+ * user outright (unlike Postgres, there's no FK constraint holding it back,
+ * and a deleted account shouldn't remain sign-in-able). Requires the ID
+ * token's `auth_time` to be recent — the client re-authenticates
+ * (reauthenticateWithCredential) and gets a fresh token before calling this,
+ * per docs/Product_Spec_Requirements.md §1.4; checking auth_time server-side
+ * is defense in depth against a stale token being replayed, not just a
+ * client-side gate.
+ */
+export async function deleteMyAccount(req: NextRequest): Promise<void> {
+  const decoded = await verifyFirebaseToken(req);
+  const authAgeSeconds = Date.now() / 1000 - decoded.auth_time;
+  if (authAgeSeconds > REAUTH_MAX_AGE_SECONDS) {
+    throw new ReauthenticationRequiredError();
+  }
+
+  const user = await findUserByFirebaseUid(decoded.uid);
+  if (!user) throw new UnauthenticatedError();
+
+  await anonymizeUser(user.id);
+  await firebaseAdminAuth.deleteUser(decoded.uid);
 }

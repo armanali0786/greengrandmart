@@ -43,20 +43,21 @@ Error:
 
 ### 1.3 Standard Error Codes
 
-| Code                          | HTTP status | Meaning                                                                           |
-| ----------------------------- | ----------- | --------------------------------------------------------------------------------- |
-| `UNAUTHENTICATED`             | 401         | Missing/invalid Firebase token                                                    |
-| `FORBIDDEN`                   | 403         | Authenticated but lacks required role/ownership                                   |
-| `VALIDATION_ERROR`            | 400         | Zod validation failed; `field` indicates which input                              |
-| `NOT_FOUND`                   | 404         | Resource doesn't exist or isn't visible to this user                              |
-| `OUT_OF_STOCK`                | 409         | Requested quantity exceeds available stock                                        |
-| `PRICE_CHANGED`               | 409         | Client's assumed price no longer matches server price                             |
-| `COUPON_INVALID`              | 400         | Coupon expired/exhausted/not applicable — `message` gives the specific reason     |
-| `PAYMENT_VERIFICATION_FAILED` | 400         | Razorpay signature check failed                                                   |
-| `INVALID_ORDER_STATE`         | 409         | Requested action not valid for order's current status (e.g. cancel after shipped) |
-| `OTP_INVALID`                 | 400         | Wrong/expired OTP code                                                            |
-| `RATE_LIMITED`                | 429         | Too many requests for this action/identity                                        |
-| `INTERNAL_ERROR`              | 500         | Unexpected server error (generic message to client, full detail logged)           |
+| Code                          | HTTP status | Meaning                                                                                                                                                                                                                                          |
+| ----------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `UNAUTHENTICATED`             | 401         | Missing/invalid Firebase token                                                                                                                                                                                                                   |
+| `FORBIDDEN`                   | 403         | Authenticated but lacks required role/ownership                                                                                                                                                                                                  |
+| `VALIDATION_ERROR`            | 400         | Zod validation failed; `field` indicates which input                                                                                                                                                                                             |
+| `NOT_FOUND`                   | 404         | Resource doesn't exist or isn't visible to this user                                                                                                                                                                                             |
+| `OUT_OF_STOCK`                | 409         | Requested quantity exceeds available stock                                                                                                                                                                                                       |
+| `PRICE_CHANGED`               | 409         | Client's assumed price no longer matches server price                                                                                                                                                                                            |
+| `COUPON_INVALID`              | 400         | Coupon expired/exhausted/not applicable — `message` gives the specific reason                                                                                                                                                                    |
+| `PAYMENT_VERIFICATION_FAILED` | 400         | Razorpay signature check failed                                                                                                                                                                                                                  |
+| `INVALID_ORDER_STATE`         | 409         | Requested action not valid for order's current status (e.g. cancel after shipped)                                                                                                                                                                |
+| `OTP_INVALID`                 | 400         | Wrong/expired OTP code                                                                                                                                                                                                                           |
+| `RATE_LIMITED`                | 429         | Too many requests for this action/identity                                                                                                                                                                                                       |
+| `REAUTHENTICATION_REQUIRED`   | 401         | Added during implementation for `DELETE /auth/me` (docs/Product_Spec_Requirements.md §1.4 requires re-auth before account deletion) — the ID token's `auth_time` is older than 5 minutes; client re-authenticates and retries with a fresh token |
+| `INTERNAL_ERROR`              | 500         | Unexpected server error (generic message to client, full detail logged)                                                                                                                                                                          |
 
 ### 1.4 Pagination
 

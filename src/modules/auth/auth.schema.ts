@@ -3,10 +3,18 @@ import { z } from 'zod';
 // Password rule per docs/Product_Spec_Requirements.md "Auth": min 8 chars, ≥1 number.
 // Firebase enforces its own (weaker) minimum server-side; this is the stricter
 // business rule, enforced client-side before we ever call the Firebase SDK.
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters.')
   .regex(/\d/, 'Password must contain at least one number.');
+
+// India-only per docs/PRD.md assumptions: 10 digits, no country code, starting
+// 6-9 (the valid Indian mobile prefix range) — matches every phone example in
+// API_Spec.md ("9876543210").
+export const indianPhoneSchema = z
+  .string()
+  .trim()
+  .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number.');
 
 export const signUpSchema = z.object({
   name: z.string().trim().min(1, 'Name is required.'),
@@ -37,3 +45,19 @@ export const loginLockoutSchema = z.object({
   email: z.string().trim().email(),
 });
 export type LoginLockoutInput = z.infer<typeof loginLockoutSchema>;
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required.').max(200).optional(),
+  phone: indianPhoneSchema.optional(),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email('Enter a valid email address.'),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  password: passwordSchema,
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

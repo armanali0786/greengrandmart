@@ -83,6 +83,12 @@ export default function LoginPage() {
           error={errors.password?.message}
           {...register('password')}
         />
+        <Link
+          href="/forgot-password"
+          className="text-primary-700 -mt-2 self-end text-sm font-medium hover:underline"
+        >
+          Forgot password?
+        </Link>
 
         {formError && (
           <p role="alert" className="bg-error-bg text-error rounded-[10px] px-3 py-2 text-sm">
