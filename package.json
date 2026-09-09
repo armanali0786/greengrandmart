@@ -18,7 +18,8 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
-    "emulators": "firebase emulators:start --only auth",
+    "set-user-role": "tsx scripts/set-user-role.ts",
+    "emulators": "firebase emulators:start --only auth,storage",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -46,6 +47,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "^7.87.0",
+    "sharp": "^0.35.4",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.5.4"
   },
@@ -68,6 +70,7 @@
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vite": "^8.2.2",
     "vite-tsconfig-paths": "^6.1.1",

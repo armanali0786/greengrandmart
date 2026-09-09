@@ -56,7 +56,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel }: 
         error={errors.landmark?.message}
         {...register('landmark')}
       />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input label="City" error={errors.city?.message} {...register('city')} />
         <Input label="State" error={errors.state?.message} {...register('state')} />
       </div>

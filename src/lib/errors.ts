@@ -43,3 +43,22 @@ export class RateLimitedError extends DomainError {
     super(message);
   }
 }
+
+/**
+ * Generic "this unique value is already taken" — e.g. a product/category/
+ * brand slug. Not itemized in docs/API_Spec.md's standard error code table
+ * (added during Phase 3 implementation; reflected there too). Reusable
+ * across modules the same way NotFoundError is, rather than one class per
+ * module for the same shape of failure.
+ */
+export class ConflictError extends DomainError {
+  readonly code = 'CONFLICT' as const;
+  readonly httpStatus = 409;
+
+  constructor(
+    message: string,
+    public readonly field?: string,
+  ) {
+    super(message);
+  }
+}

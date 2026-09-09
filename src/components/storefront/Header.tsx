@@ -6,16 +6,15 @@ import { Leaf, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getFirebaseAuth } from '@/lib/firebase-client';
 import { Button } from '@/components/ui/Button';
+import { SearchBar } from '@/components/storefront/SearchBar';
 import { cn } from '@/lib/cn';
 
 /**
  * Storefront top bar. Per docs/UX_UI_Spec.md "Navigation", the full picture
- * is a mobile bottom tab bar (Home | Categories | Cart | Account) plus a top
- * bar with search + notification bell, and a desktop top bar adding a
- * Categories dropdown, Wishlist, and Cart badge. Those items are added here
- * as their features land (catalog, cart, wishlist, notifications) rather
- * than linking to pages that don't exist yet — this phase only has Home and
- * account auth state to show.
+ * also has a mobile bottom tab bar (Home | Categories | Cart | Account) and
+ * a desktop Categories dropdown, Wishlist, notification bell, and Cart
+ * badge — added here as those features land (cart, wishlist, notifications)
+ * rather than linking to pages that don't exist yet.
  */
 export function Header() {
   const { firebaseUser, loading } = useAuth();
@@ -26,13 +25,24 @@ export function Header() {
 
   return (
     <header className="border-border bg-surface sticky top-0 z-10 border-b">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="text-primary-700 flex items-center gap-2">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
+        <Link href="/" className="text-primary-700 flex shrink-0 items-center gap-2">
           <Leaf className="h-6 w-6" aria-hidden="true" />
-          <span className="text-lg font-semibold">GreenGrandMart</span>
+          <span className="hidden text-lg font-semibold sm:inline">GreenGrandMart</span>
         </Link>
 
-        <nav className="flex items-center gap-3">
+        <Link
+          href="/products"
+          className="text-foreground hover:text-primary-700 hidden shrink-0 text-sm font-medium md:inline"
+        >
+          All Products
+        </Link>
+
+        <div className="min-w-0 flex-1">
+          <SearchBar />
+        </div>
+
+        <nav className="flex shrink-0 items-center gap-3">
           {loading ? (
             <div className="bg-primary-50 h-9 w-20 animate-pulse rounded-[10px]" />
           ) : firebaseUser ? (
@@ -54,7 +64,7 @@ export function Header() {
             <>
               <Link
                 href="/login"
-                className="text-foreground hover:text-primary-700 text-sm font-medium"
+                className="text-foreground hover:text-primary-700 shrink-0 text-sm font-medium"
               >
                 Log in
               </Link>
@@ -69,6 +79,13 @@ export function Header() {
             </>
           )}
         </nav>
+      </div>
+
+      {/* Products link is desktop-only above; mobile gets it in a second row */}
+      <div className="border-border border-t px-4 py-2 md:hidden">
+        <Link href="/products" className="text-foreground text-sm font-medium">
+          All Products
+        </Link>
       </div>
     </header>
   );

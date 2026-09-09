@@ -133,7 +133,7 @@ CREATE TABLE products (
   is_featured       boolean NOT NULL DEFAULT false,
   seo_title         text,
   seo_description   text,
-  search_vector     tsvector,                                    -- generated column, see Section 8
+  search_vector     tsvector,                                    -- trigger-maintained, see addendum below
   created_at        timestamptz NOT NULL DEFAULT now(),
   updated_at        timestamptz NOT NULL DEFAULT now(),
   deleted_at        timestamptz
@@ -172,6 +172,32 @@ CREATE INDEX idx_images_product ON product_images(product_id, sort_order);
 CREATE UNIQUE INDEX uq_one_primary_image_per_product
   ON product_images(product_id) WHERE is_primary = true;
 ```
+
+**Addendum (added during implementation): `search_vector` population.** The original comment above ("generated column, see Section 8") pointed nowhere — this doc never actually specified the generation logic, and a plain `GENERATED ALWAYS AS (...) STORED` column cannot reference `brands`/`categories` (a same-table generated column can't join), which the search requirement ("tsvector of name/description/brand/category," §13 Indexing Strategy Summary) needs. Implemented instead as a trigger on `products` that looks up the current brand/category name and combines it with `name`/`short_description`/`description` (weighted A/B/C via `setweight`) into `search_vector` on every insert/update of those columns:
+
+```sql
+CREATE FUNCTION products_search_vector_trigger() RETURNS trigger AS $$
+DECLARE
+  brand_name TEXT;
+  category_name TEXT;
+BEGIN
+  SELECT name INTO brand_name FROM brands WHERE id = NEW.brand_id;
+  SELECT name INTO category_name FROM categories WHERE id = NEW.category_id;
+  NEW.search_vector :=
+    setweight(to_tsvector('english', coalesce(NEW.name, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(NEW.short_description, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(brand_name, '') || ' ' || coalesce(category_name, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(NEW.description, '')), 'C');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_products_search_vector
+  BEFORE INSERT OR UPDATE OF name, short_description, description, brand_id, category_id
+  ON products FOR EACH ROW EXECUTE FUNCTION products_search_vector_trigger();
+```
+
+**Known limitation:** renaming a brand or category does not retroactively re-index the products that reference it (no trigger on `brands`/`categories` themselves) — acceptable at this scale (renames are rare; the catalog module can force a re-index by re-saving affected products if this ever matters in practice).
 
 ---
 

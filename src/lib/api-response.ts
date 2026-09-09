@@ -27,8 +27,11 @@ export function error(e: unknown) {
   }
 
   if (e instanceof DomainError) {
+    // A few DomainError subclasses (e.g. ConflictError) carry an optional
+    // `field`, same idea as ZodError's — included when present.
+    const field = 'field' in e ? (e as { field?: string }).field : undefined;
     return NextResponse.json(
-      { success: false, error: { code: e.code, message: e.message } },
+      { success: false, error: { code: e.code, message: e.message, ...(field && { field }) } },
       { status: e.httpStatus },
     );
   }

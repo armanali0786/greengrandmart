@@ -9,7 +9,11 @@ if (env.NEXT_PUBLIC_FIREBASE_USE_EMULATOR) {
   process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 }
 
-function getFirebaseAdminApp(): App {
+// Exported so other lib modules (e.g. firebase-storage.ts) can get the same
+// initialized app without relying on import order/side-effects to have
+// already run initializeApp() — getStorage()/getAuth() both throw
+// 'app/no-app' if called before some code initializes the default app.
+export function getFirebaseAdminApp(): App {
   const existing = getApps();
   if (existing.length > 0) return existing[0];
 
