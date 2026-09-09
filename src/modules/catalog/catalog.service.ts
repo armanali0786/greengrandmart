@@ -214,6 +214,8 @@ export async function getVariantsForPricing(
   const rows = await repo.findVariantsForPricing(variantIds);
   return rows.map((v) => ({
     variantId: v.id,
+    sku: v.sku,
+    attributes: v.attributes as Record<string, string>,
     productId: v.product.id,
     productName: v.product.name,
     categoryId: v.product.categoryId,

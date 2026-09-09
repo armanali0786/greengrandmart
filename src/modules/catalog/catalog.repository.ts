@@ -454,6 +454,8 @@ export async function setPrimaryImageRow(
 
 export interface VariantPricingRow {
   id: string;
+  sku: string;
+  attributes: Prisma.JsonValue;
   price: number;
   salePrice: number | null;
   product: {
@@ -476,6 +478,8 @@ export async function findVariantsForPricing(variantIds: string[]): Promise<Vari
     where: { id: { in: variantIds } },
     select: {
       id: true,
+      sku: true,
+      attributes: true,
       price: true,
       salePrice: true,
       product: {

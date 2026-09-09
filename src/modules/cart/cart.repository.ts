@@ -174,3 +174,18 @@ export async function mergeCartRows(guestCart: CartRow, userId: string): Promise
     await tx.cart.delete({ where: { id: guestCart.id } });
   });
 }
+
+/**
+ * Marks a cart 'converted' once its contents become a real order
+ * (checkout.service, Phase 6) — cart_items are left as-is (the order has
+ * its own snapshot, so nothing further reads them), and the owner's next
+ * getOrCreateCart call finds no 'active' cart and transparently starts a
+ * fresh empty one, since findActiveCartByUser/BySession both filter on
+ * status='active'.
+ */
+export async function markCartConverted(
+  tx: Prisma.TransactionClient,
+  cartId: string,
+): Promise<void> {
+  await tx.cart.update({ where: { id: cartId }, data: { status: 'converted' } });
+}

@@ -57,6 +57,8 @@ export interface PromotionSummary {
 
 export interface QuoteLine {
   variantId: string;
+  sku: string;
+  attributes: Record<string, string>;
   productId: string;
   productName: string;
   quantity: number;

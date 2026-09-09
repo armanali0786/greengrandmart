@@ -125,6 +125,17 @@ export async function lockReservationRow(
   return rows[0] ?? null;
 }
 
+export async function findActiveReservationIdsForOrder(
+  tx: TxClient,
+  orderId: string,
+): Promise<string[]> {
+  const rows = await tx.inventoryReservation.findMany({
+    where: { orderId, status: 'active' },
+    select: { id: true },
+  });
+  return rows.map((r) => r.id);
+}
+
 export async function markReservationRow(
   tx: TxClient,
   reservationId: string,

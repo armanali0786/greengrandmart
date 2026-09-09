@@ -90,6 +90,8 @@ export interface BrandSummary {
 /** What modules/pricing needs to price a cart line — see catalog.service.ts's getVariantsForPricing. */
 export interface VariantPricingSnapshot {
   variantId: string;
+  sku: string;
+  attributes: Record<string, string>;
   productId: string;
   productName: string;
   categoryId: string | null;

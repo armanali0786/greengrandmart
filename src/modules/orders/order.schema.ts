@@ -1,0 +1,47 @@
+import { z } from 'zod';
+
+const orderStatusValues = [
+  'pending_payment',
+  'payment_failed',
+  'confirmed',
+  'processing',
+  'packed',
+  'shipped',
+  'out_for_delivery',
+  'delivered',
+  'cancel_requested',
+  'cancelled',
+  'return_requested',
+  'return_approved',
+  'returned',
+  'refund_pending',
+  'refunded',
+] as const;
+
+export const checkoutSchema = z.object({
+  shippingAddressId: z.string().uuid(),
+  billingAddressId: z.string().uuid().optional(),
+  // 'cod' isn't accepted yet: Product_Spec_Requirements.md §5.1 requires
+  // phone OTP verification before a COD order can be placed, and OTP
+  // (MSG91) is Phase 9's job — restricting the accepted value here keeps
+  // that gap visible at the API boundary instead of failing deep inside
+  // the service.
+  paymentMethod: z.literal('online'),
+  couponCode: z.string().trim().min(1).optional(),
+});
+export type CheckoutInput = z.infer<typeof checkoutSchema>;
+
+// trackingNumber isn't accepted yet — it belongs on `shipments`
+// (Phase 8's "Shipping"), which nothing creates rows in until then.
+export const updateOrderStatusSchema = z.object({
+  status: z.enum(orderStatusValues),
+  note: z.string().trim().max(1000).optional(),
+});
+export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
+
+export const listOrdersQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  status: z.enum(orderStatusValues).optional(),
+});
+export type ListOrdersQuery = z.infer<typeof listOrdersQuerySchema>;

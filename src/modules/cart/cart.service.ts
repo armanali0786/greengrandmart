@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { NotFoundError } from '@/lib/errors';
 import { getPublicImageUrl } from '@/lib/firebase-storage';
 import { OutOfStockError } from '@/modules/inventory/inventory.errors';
@@ -144,4 +145,9 @@ export async function mergeGuestCart(userId: string, sessionId: string): Promise
   const guestCart = await repo.findActiveCartBySession(sessionId);
   if (!guestCart || guestCart.items.length === 0) return;
   await repo.mergeCartRows(guestCart, userId);
+}
+
+/** Used by checkout.service (modules/orders) once a cart's contents become a real order. */
+export async function convertCart(cartId: string, tx: Prisma.TransactionClient): Promise<void> {
+  await repo.markCartConverted(tx, cartId);
 }

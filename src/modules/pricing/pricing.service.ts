@@ -89,6 +89,8 @@ async function priceLines(
 
     lines.push({
       variantId: snapshot.variantId,
+      sku: snapshot.sku,
+      attributes: snapshot.attributes,
       productId: snapshot.productId,
       productName: snapshot.productName,
       quantity: item.quantity,
@@ -219,6 +221,8 @@ export async function computeOrderTotal(
     grandTotal,
     lines: lines.map((line) => ({
       variantId: line.variantId,
+      sku: line.sku,
+      attributes: line.attributes,
       productId: line.productId,
       productName: line.productName,
       quantity: line.quantity,

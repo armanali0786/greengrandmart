@@ -124,6 +124,20 @@ export async function convertReservationToSale(tx: TxClient, reservationId: stri
   });
 }
 
+/**
+ * Releases every still-active reservation tied to an order — used by
+ * order cancellation and (later) the reservation-expiry sweep's
+ * order-side effect. Looks up reservation ids fresh inside `tx` rather
+ * than taking them as a param, so a caller can't accidentally release the
+ * wrong order's stock.
+ */
+export async function releaseReservationsForOrder(tx: TxClient, orderId: string): Promise<void> {
+  const ids = await repo.findActiveReservationIdsForOrder(tx, orderId);
+  for (const id of ids) {
+    await releaseReservation(tx, id);
+  }
+}
+
 function movementQuantityFor(input: AdjustStockInput): number {
   if (input.type === 'restock') return input.quantity;
   if (input.type === 'damage') return -input.quantity;

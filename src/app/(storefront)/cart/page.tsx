@@ -124,13 +124,19 @@ export default function CartPage() {
               Some items are unavailable — remove them to continue.
             </p>
           )}
-          <Button
-            disabled
-            title="Checkout isn't available yet — coming in a future phase."
-            className="w-full"
-          >
-            Proceed to Checkout
-          </Button>
+          {hasUnavailable ? (
+            <Button
+              disabled
+              title="Remove unavailable items before proceeding to checkout."
+              className="w-full"
+            >
+              Proceed to Checkout
+            </Button>
+          ) : (
+            <Link href="/checkout">
+              <Button className="w-full">Proceed to Checkout</Button>
+            </Link>
+          )}
         </div>
       </div>
     </div>

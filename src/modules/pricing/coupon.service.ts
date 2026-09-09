@@ -124,6 +124,37 @@ export async function validateCouponPreview(
   };
 }
 
+/**
+ * Real redemption — called only from inside checkout.service's
+ * order-creation transaction (Architecture.md §5.3), never from the
+ * preview path. Re-checks usage_limit_total under a row lock (closing the
+ * race checkCoupon's preview-time count can't) and relies on
+ * coupon_redemptions' UNIQUE(coupon_id, user_id) constraint for the
+ * per-user cap — a conflict there throws and rolls back the whole
+ * transaction, including the order itself.
+ */
+export async function redeemCoupon(
+  tx: Prisma.TransactionClient,
+  params: { code: string; userId: string; orderId: string },
+): Promise<void> {
+  const normalizedCode = params.code.trim().toUpperCase();
+  const coupon = await repo.lockCouponForRedemption(tx, normalizedCode);
+  if (!coupon) throw new CouponInvalidError('This coupon code is not valid.');
+
+  if (coupon.usageLimitTotal !== null) {
+    const count = await repo.countRedemptionsForCoupon(tx, coupon.id);
+    if (count >= coupon.usageLimitTotal) {
+      throw new CouponInvalidError('This coupon has reached its usage limit.');
+    }
+  }
+
+  await repo.createRedemptionRow(tx, {
+    couponId: coupon.id,
+    userId: params.userId,
+    orderId: params.orderId,
+  });
+}
+
 // ── Admin CRUD ──────────────────────────────────────────────────────────
 
 export async function listCouponsForAdmin(user: SessionUser): Promise<CouponSummary[]> {
