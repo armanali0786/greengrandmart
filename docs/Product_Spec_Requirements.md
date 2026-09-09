@@ -2,6 +2,7 @@
 
 **Companion docs:** `PRD.md` (business goals/scope) · `ECOMMERCE_IMPLEMENTATION_PLAN.md` (architecture/schema)
 **Purpose of this doc:** feature-by-feature functional requirements with acceptance criteria and edge cases — the level of detail needed to actually build and test each module.
+**Vertical:** fashion, beauty, and accessories, for girls and women (see `PRD.md` §1) — category taxonomy, seed data, and example copy throughout this doc should reflect that.
 
 ---
 

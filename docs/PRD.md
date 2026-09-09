@@ -11,6 +11,8 @@
 
 A production e-commerce platform for the Indian market, built to serve an initial small-scale launch (~100 concurrent users, ~500 products, ~~1,000 orders/month) on a lean budget (~~₹2,500–3,000/month infra), while architected so growth to 10,000+ users needs no rewrite — only additive changes.
 
+**Vertical & audience:** fashion, beauty, and accessories — clothing, footwear, jewelry, skincare, makeup, and haircare — for a broad audience of girls and women, no single age band. The catalog/cart/inventory architecture below is category-agnostic by design (variants carry freeform `attributes` such as size/color/shade rather than anything category-specific), so this is a content/taxonomy choice, not a structural one — but it should still drive category taxonomy, homepage merchandising, seed/demo data, and copy throughout.
+
 ---
 
 ## 2. Problem Statement

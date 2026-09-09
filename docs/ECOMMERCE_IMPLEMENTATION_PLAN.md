@@ -2,6 +2,7 @@
 
 **Scale target:** ~100 concurrent users, ~500 products, ~1,000 orders/month
 **Budget:** ~₹10,000/month infra (actual usage ~₹2,500–4,000/month)
+**Vertical:** fashion, beauty, and accessories, for girls and women (see `PRD.md` §1)
 **Principle:** No dead ends. Every module is built so it can grow 10–20x without a rewrite, but nothing is over-built for today's traffic.
 
 ---

@@ -7,12 +7,12 @@ const runId = Date.now();
 const adminEmail = `cart-admin+${runId}@example.com`;
 const password = 'password123';
 
-const categoryName = `Snacks ${runId}`;
-const categorySlug = `snacks-${runId}`;
-const brandName = `GGM Snacks ${runId}`;
-const brandSlug = `ggm-snacks-${runId}`;
-const productName = `Roasted Almonds ${runId}`;
-const productSlug = `roasted-almonds-${runId}`;
+const categoryName = `Accessories ${runId}`;
+const categorySlug = `accessories-${runId}`;
+const brandName = `GGM Accessories ${runId}`;
+const brandSlug = `ggm-accessories-${runId}`;
+const productName = `Hoop Earrings ${runId}`;
+const productSlug = `hoop-earrings-${runId}`;
 
 function promoteToAdmin(userEmail: string) {
   execSync(`npm run set-user-role -- ${userEmail} admin`, { cwd: process.cwd(), stdio: 'pipe' });
@@ -48,7 +48,7 @@ test('admin creates a limited-stock product for the cart tests', async ({ page }
   await page.locator('#categoryId').selectOption({ label: categoryName });
   await page.locator('#brandId').selectOption({ label: brandName });
   await page.getByLabel('Base price (₹)').fill('499');
-  await page.getByLabel('SKU').fill(`RA-${runId}`);
+  await page.getByLabel('SKU').fill(`HE-${runId}`);
   await page.getByLabel('Price (₹)', { exact: true }).fill('499');
   await page.getByLabel('Initial stock').fill('2');
   await page.locator('#status').selectOption('active');

@@ -9,12 +9,12 @@ const email = `catalog-admin+${runId}@example.com`;
 const password = 'password123';
 const fixturesDir = path.resolve(process.cwd(), 'tests/fixtures');
 
-const categoryName = `Beverages ${runId}`;
-const categorySlug = `beverages-${runId}`;
-const brandName = `GGM Organics ${runId}`;
-const brandSlug = `ggm-organics-${runId}`;
-const productName = `Organic Green Tea ${runId}`;
-const productSlug = `organic-green-tea-${runId}`;
+const categoryName = `Beauty ${runId}`;
+const categorySlug = `beauty-${runId}`;
+const brandName = `GGM Beauty ${runId}`;
+const brandSlug = `ggm-beauty-${runId}`;
+const productName = `Matte Lipstick ${runId}`;
+const productSlug = `matte-lipstick-${runId}`;
 
 function promoteToAdmin(userEmail: string) {
   execSync(`npm run set-user-role -- ${userEmail} admin`, {
@@ -59,10 +59,10 @@ test('admin creates category, brand, product with variant + image; it appears on
   await expect(page.getByLabel('Slug')).toHaveValue(productSlug);
   await page.locator('#categoryId').selectOption({ label: categoryName });
   await page.locator('#brandId').selectOption({ label: brandName });
-  await page.getByLabel('Short description').fill('100 bags, immunity boosting');
+  await page.getByLabel('Short description').fill('Long-wear matte finish, 12 shades');
   await page.getByLabel('Base price (₹)').fill('249');
-  await page.getByLabel('GST rate (%)').fill('5');
-  await page.getByLabel('SKU').fill(`GT-${runId}`);
+  await page.getByLabel('GST rate (%)').fill('18');
+  await page.getByLabel('SKU').fill(`ML-${runId}`);
   await page.getByLabel('Price (₹)', { exact: true }).fill('249');
   await page.getByLabel('Initial stock').fill('50');
   await page.locator('#status').selectOption('active');
@@ -89,9 +89,9 @@ test('admin creates category, brand, product with variant + image; it appears on
   await expect(page.getByText(productName)).toBeVisible();
 
   await page.goto(`/search?q=${encodeURIComponent(productName)}`);
-  await expect(page.getByRole('link', { name: 'Organic Green Tea' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Matte Lipstick' })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Organic Green Tea' }).click();
+  await page.getByRole('link', { name: 'Matte Lipstick' }).click();
   await page.waitForURL(new RegExp(`/products/${productSlug}`));
   await expect(page.getByRole('heading', { name: productName })).toBeVisible();
   await expect(page.getByText('₹249.00')).toBeVisible();

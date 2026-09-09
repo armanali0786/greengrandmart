@@ -26,10 +26,10 @@ export default async function HomePage() {
         <div className="bg-primary-50 flex flex-col items-center gap-6 rounded-[10px] px-6 py-16 text-center">
           <Leaf className="text-primary-600 h-12 w-12" aria-hidden="true" />
           <h1 className="text-foreground text-3xl font-semibold sm:text-4xl">
-            Fresh groceries, delivered.
+            Fashion & beauty, for every you.
           </h1>
           <p className="text-muted max-w-xl">
-            Everyday essentials, sourced fresh and delivered to your door.
+            Clothing, beauty, and accessories curated for girls and women — delivered to your door.
           </p>
           <Link
             href="/products"

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     default: 'GreenGrandMart',
     template: '%s | GreenGrandMart',
   },
-  description: 'GreenGrandMart — fresh groceries and everyday essentials, delivered.',
+  description: 'GreenGrandMart — fashion, beauty, and accessories for every girl and woman.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
