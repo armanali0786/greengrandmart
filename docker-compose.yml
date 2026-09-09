@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: greengrandmart-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: greengrandmart
+      POSTGRES_PASSWORD: greengrandmart
+      POSTGRES_DB: greengrandmart
+    ports:
+      - '5433:5432'
+    volumes:
+      - greengrandmart-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  greengrandmart-postgres-data:
