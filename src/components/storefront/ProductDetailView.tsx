@@ -1,10 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Star } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { toRupeeDisplay } from '@/lib/money';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/ui/Toast';
+import { ApiError } from '@/lib/api-client';
+import { useAddToCart } from '@/hooks/useCart';
 import { ProductGallery } from '@/components/storefront/ProductGallery';
 import type { ProductDetail } from '@/modules/catalog/catalog.types';
 
@@ -24,6 +28,9 @@ function uniqueValuesFor(product: ProductDetail, key: string): string[] {
 }
 
 export function ProductDetailView({ product }: { product: ProductDetail }) {
+  const router = useRouter();
+  const { show } = useToast();
+  const addToCart = useAddToCart();
   const attributeKeys = useMemo(() => collectAttributeKeys(product), [product]);
   const firstInStock = product.variants.find((v) => v.inStock) ?? product.variants[0];
 
@@ -48,6 +55,35 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
   function selectAttribute(key: string, value: string) {
     setSelected((prev) => ({ ...prev, [key]: value }));
     setQuantity(1);
+  }
+
+  async function handleAddToCart(): Promise<boolean> {
+    if (!selectedVariant) return false;
+    try {
+      await addToCart.mutateAsync({ variantId: selectedVariant.id, quantity });
+      return true;
+    } catch (e) {
+      show({ message: e instanceof ApiError ? e.message : 'Could not add to cart.' });
+      return false;
+    }
+  }
+
+  async function onAddToCart() {
+    const added = await handleAddToCart();
+    if (added)
+      show({
+        message: 'Added to cart',
+        actionLabel: 'View cart',
+        onAction: () => router.push('/cart'),
+      });
+  }
+
+  // Checkout doesn't exist until Phase 6 — "Buy Now" adds the item then
+  // takes the shopper straight to the cart, the closest real page to what
+  // it promises, rather than being disabled like Add to Cart was pre-Phase-4.
+  async function onBuyNow() {
+    const added = await handleAddToCart();
+    if (added) router.push('/cart');
   }
 
   return (
@@ -161,7 +197,8 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
           <div className="mt-2 flex gap-3">
             <Button
               disabled={!inStock}
-              title="Cart isn't available yet — coming in the next phase."
+              loading={addToCart.isPending}
+              onClick={onAddToCart}
               className="flex-1"
             >
               {inStock ? 'Add to Cart' : 'Out of Stock'}
@@ -169,7 +206,8 @@ export function ProductDetailView({ product }: { product: ProductDetail }) {
             <Button
               variant="secondary"
               disabled={!inStock}
-              title="Checkout isn't available yet — coming in a future phase."
+              loading={addToCart.isPending}
+              onClick={onBuyNow}
               className="flex-1"
             >
               Buy Now

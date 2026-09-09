@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { signOut } from 'firebase/auth';
-import { Leaf, User } from 'lucide-react';
+import { Leaf, ShoppingCart, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useCart } from '@/hooks/useCart';
 import { getFirebaseAuth } from '@/lib/firebase-client';
 import { Button } from '@/components/ui/Button';
 import { SearchBar } from '@/components/storefront/SearchBar';
@@ -12,12 +13,14 @@ import { cn } from '@/lib/cn';
 /**
  * Storefront top bar. Per docs/UX_UI_Spec.md "Navigation", the full picture
  * also has a mobile bottom tab bar (Home | Categories | Cart | Account) and
- * a desktop Categories dropdown, Wishlist, notification bell, and Cart
- * badge — added here as those features land (cart, wishlist, notifications)
- * rather than linking to pages that don't exist yet.
+ * a desktop Categories dropdown, Wishlist, and notification bell — added
+ * here as those features land (wishlist, notifications) rather than
+ * linking to pages that don't exist yet.
  */
 export function Header() {
   const { firebaseUser, loading } = useAuth();
+  const { data: cart } = useCart();
+  const itemCount = cart?.items.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
 
   async function handleSignOut() {
     await signOut(getFirebaseAuth());
@@ -43,6 +46,18 @@ export function Header() {
         </div>
 
         <nav className="flex shrink-0 items-center gap-3">
+          <Link
+            href="/cart"
+            aria-label={`Cart${itemCount > 0 ? `, ${itemCount} item${itemCount === 1 ? '' : 's'}` : ''}`}
+            className="text-foreground hover:text-primary-700 relative flex items-center"
+          >
+            <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+            {itemCount > 0 && (
+              <span className="bg-primary-600 absolute -top-2 -right-2 flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white">
+                {itemCount > 99 ? '99+' : itemCount}
+              </span>
+            )}
+          </Link>
           {loading ? (
             <div className="bg-primary-50 h-9 w-20 animate-pulse rounded-[10px]" />
           ) : firebaseUser ? (
