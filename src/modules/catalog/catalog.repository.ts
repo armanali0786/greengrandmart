@@ -1,6 +1,10 @@
 import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
-import type { ListProductsQuery, SearchQuery } from '@/modules/catalog/catalog.schema';
+import type {
+  ListProductsQuery,
+  SearchQuery,
+  UpdateProductInput,
+} from '@/modules/catalog/catalog.schema';
 
 type TxClient = Prisma.TransactionClient;
 
@@ -371,9 +375,28 @@ export async function createProductWithVariants(
 
 export async function updateProductRow(
   id: string,
-  data: Prisma.ProductUpdateInput,
+  data: UpdateProductInput,
 ): Promise<{ id: string; slug: string }> {
-  return db.product.update({ where: { id }, data, select: { id: true, slug: true } });
+  const { variants, ...productData } = data;
+  return db.$transaction(async (tx) => {
+    const result = await tx.product.update({
+      where: { id },
+      data: productData,
+      select: { id: true, slug: true },
+    });
+    if (variants?.length) {
+      // Scoped to this product's id too — a stray/forged variant id from
+      // another product can't be updated through this endpoint.
+      for (const v of variants) {
+        if (!v.id) continue;
+        await tx.productVariant.updateMany({
+          where: { id: v.id, productId: id },
+          data: { attributes: v.attributes, price: v.price, salePrice: v.salePrice ?? null },
+        });
+      }
+    }
+    return result;
+  });
 }
 
 export async function archiveProductRow(id: string): Promise<void> {

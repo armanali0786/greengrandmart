@@ -71,6 +71,7 @@ export default function EditProductPage({ params }: PageProps<'/admin/products/[
     seoTitle: product.seoTitle ?? undefined,
     seoDescription: product.seoDescription ?? undefined,
     variants: product.variants.map((v) => ({
+      id: v.id,
       sku: v.sku,
       attributesText: attributesToText(v.attributes),
       price: v.price / 100,

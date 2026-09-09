@@ -46,6 +46,9 @@ export const listCategoryProductsQuerySchema = listProductsQuerySchema.omit({ ca
 // ── Admin mutations ─────────────────────────────────────────────────────
 
 const variantInputSchema = z.object({
+  // Only meaningful on update (identifies which existing row to patch) —
+  // unused and harmless when creating, since a brand-new variant has no id yet.
+  id: z.string().uuid().optional(),
   sku: z.string().trim().min(1).max(100),
   attributes: z.record(z.string(), z.string()).default({}),
   price: z.number().int().nonnegative(),
@@ -80,12 +83,32 @@ export const createProductSchema = z.object({
 });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
+// Editing an *existing* variant's attributes/price is now a concrete need
+// (admin needs to fix size/color after creation) — but this deliberately
+// stays narrower than variantInputSchema: no sku/initialStock, and `id` is
+// required so the service only ever updates rows that already exist. It can
+// never add or remove variants or touch stock, so it can't silently
+// delete/recreate inventory records — that concern (AGENTS.md §8) still
+// holds for anything beyond this.
+const updateVariantSchema = z.object({
+  // Optional at the type level only to structurally match variantInputSchema's
+  // shape (shared with the admin form for both create/edit) — the service
+  // layer skips any variant missing an id rather than guessing which row it
+  // meant, since it can only ever patch a variant that already exists.
+  id: z.string().uuid().optional(),
+  attributes: z.record(z.string(), z.string()).default({}),
+  price: z.number().int().nonnegative(),
+  salePrice: z.number().int().nonnegative().optional(),
+});
+export type UpdateVariantInput = z.infer<typeof updateVariantSchema>;
+
 // No PATCH example body exists in API_Spec.md (research brief gap #4) —
-// implemented as the same shape, fully optional, minus `variants` (variant
-// mutation is a separate concern: variants aren't itemized for edit here to
-// avoid one endpoint silently deleting/recreating stock records; add/edit
-// individual variants only once that need is concrete, per AGENTS.md §8).
-export const updateProductSchema = createProductSchema.omit({ variants: true }).partial();
+// implemented as the same shape, fully optional, plus an optional narrower
+// `variants` (see updateVariantSchema above for why it's not variantInputSchema).
+export const updateProductSchema = createProductSchema
+  .omit({ variants: true })
+  .partial()
+  .extend({ variants: z.array(updateVariantSchema).optional() });
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
 export const createCategorySchema = z.object({

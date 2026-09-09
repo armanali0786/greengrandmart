@@ -15,6 +15,7 @@ import type { CreateProductInput } from '@/modules/catalog/catalog.schema';
 // / jsonb-object shapes the API (CreateProductInput) actually expects on
 // submit, keeping the admin from ever typing paise directly.
 const variantFormSchema = z.object({
+  id: z.string().optional(),
   sku: z.string().trim().min(1, 'SKU is required.'),
   attributesText: z.string().trim().optional(),
   price: z.coerce.number().min(0, 'Price is required.'),
@@ -82,6 +83,7 @@ export function toApiInput(values: ProductFormOutput): CreateProductInput {
     seoTitle: values.seoTitle || undefined,
     seoDescription: values.seoDescription || undefined,
     variants: values.variants.map((v) => ({
+      id: v.id,
       sku: v.sku,
       attributes: parseAttributes(v.attributesText),
       price: toPaise(v.price),
