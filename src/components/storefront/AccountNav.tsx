@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
 
-// Wishlist and Notifications (docs/UX_UI_Spec.md §4.8 sub-screens) are
-// linked here as their own phases land — no dead links to unbuilt pages.
+// Wishlist (docs/UX_UI_Spec.md §4.8 sub-screens) is linked here once its own
+// phase lands — no dead links to unbuilt pages.
 const NAV_ITEMS = [
   { href: '/account', label: 'Profile' },
   { href: '/account/addresses', label: 'Addresses' },
   { href: '/account/orders', label: 'Orders' },
+  { href: '/account/notifications', label: 'Notifications' },
   { href: '/account/security', label: 'Security' },
 ];
 

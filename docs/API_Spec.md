@@ -420,7 +420,7 @@ The OTP code itself is never present in any response, ever.
 { "success": false, "error": { "code": "OTP_INVALID", "message": "Incorrect code. 3 attempts remaining." } }
 ```
 
-`verificationId` from a successful verify is what's passed as `codOtpVerificationId` in `POST /checkout`.
+`verificationId` from a successful verify is what's passed as `codOtpVerificationId` in `POST /checkout`. **Phase 9 note:** this is the `otp_requests.id` row itself — not stated explicitly elsewhere in this doc, confirmed/documented here. Also: **`POST /checkout`'s `paymentMethod` still only accepts `'online'`** — the OTP endpoints above are complete, working infrastructure, but COD checkout itself stays gated behind the still-unopen `PRD.md` §14 COD-eligibility question (see `Product_Spec_Requirements.md` §9's Phase 9 addendum).
 
 ---
 
@@ -450,13 +450,30 @@ The OTP code itself is never present in any response, ever.
 
 ## 10. Notifications
 
-| Method | Path                          | Auth               | Purpose                                |
-| ------ | ----------------------------- | ------------------ | -------------------------------------- |
-| GET    | `/notifications`              | Bearer             | Paginated, newest first                |
-| POST   | `/notifications/:id/read`     | Bearer, owner-only | Mark one as read                       |
-| POST   | `/notifications/read-all`     | Bearer             | Mark all as read                       |
-| PATCH  | `/notifications/preferences`  | Bearer             | Update email/push opt-ins per category |
-| POST   | `/notifications/device-token` | Bearer             | Register FCM token for push            |
+| Method | Path                          | Auth               | Purpose                                                                                                                                               |
+| ------ | ----------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/notifications`              | Bearer             | Paginated, newest first                                                                                                                               |
+| POST   | `/notifications/:id/read`     | Bearer, owner-only | Mark one as read                                                                                                                                      |
+| POST   | `/notifications/read-all`     | Bearer             | Mark all as read                                                                                                                                      |
+| GET    | `/notifications/preferences`  | Bearer             | Current email/push opt-ins per category (added this phase — the preferences UI needs to read current state before showing toggles, not just write it) |
+| PATCH  | `/notifications/preferences`  | Bearer             | Update email/push opt-ins per category                                                                                                                |
+| POST   | `/notifications/device-token` | Bearer             | Register FCM token for push                                                                                                                           |
+
+**Phase 9 request/response shapes** (none were specified beyond the path table above):
+
+```json
+GET /notifications?page=1&limit=20
+// Response
+{ "success": true, "data": { "items": [ { "id": "uuid", "type": "order_confirmed", "title": "...", "body": "...", "data": {}, "read": false, "createdAt": "..." } ], "page": 1, "limit": 20, "total": 42, "unreadCount": 3 } }
+
+GET /notifications/preferences  // and the shape PATCH accepts (all fields optional on PATCH)
+// Response
+{ "success": true, "data": { "emailOrderUpdates": true, "emailPromotions": true, "pushOrderUpdates": true, "pushPromotions": true } }
+
+POST /notifications/device-token
+// Request
+{ "fcmToken": "...", "platform": "web" }
+```
 
 ---
 
@@ -579,17 +596,21 @@ Not in this table's original listing — the `returns` table (Data_Model_DB_Sche
 | GET    | `/admin/reviews?status=pending`       | admin, staff                       |
 | PATCH  | `/admin/reviews/:id` (approve/reject) | admin, staff                       |
 | GET    | `/admin/audit-logs`                   | admin only                         |
+| GET    | `/admin/jobs?status=failed`           | admin only                         |
+
+`GET /admin/jobs` — added this phase (ECOMMERCE_IMPLEMENTATION_PLAN.md §6: "admin can see failed jobs in an admin panel view," no endpoint was ever specified). Currently only lists `status='failed'` rows (`{id, type, payload, attempts, lastError, processedAt, createdAt}`) — pending/processing jobs aren't admin-visible, since there's nothing actionable to do with them.
 
 ---
 
 ## 12. Cron / Internal Endpoints
 
-| Method | Path                                 | Auth                      | Purpose                                                                                                       |
-| ------ | ------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| POST   | `/cron/process-jobs`                 | Vercel Cron secret header | Drain `job_queue`, dispatch to notification/invoice providers                                                 |
-| POST   | `/cron/release-expired-reservations` | Vercel Cron secret header | Sweep `inventory_reservations` past `expires_at`, release stock, mark order `payment_failed` if still pending |
+| Method | Path                                 | Auth                      | Purpose                                                                                                                                                                                         |
+| ------ | ------------------------------------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/cron/process-jobs`                 | Vercel Cron secret header | Drain `job_queue`, dispatch to notification/invoice providers                                                                                                                                   |
+| POST   | `/cron/release-expired-reservations` | Vercel Cron secret header | Sweep `inventory_reservations` past `expires_at`, release stock, mark order `payment_failed` if still pending                                                                                   |
+| POST   | `/cron/purge-stale-data`             | Vercel Cron secret header | Daily: delete `otp_requests`/`rate_limit_events` rows older than 24h (added this phase — ECOMMERCE_IMPLEMENTATION_PLAN.md §5.2 requires this purge but never specified a route/schedule for it) |
 
-These are not user-facing; authenticated via a shared secret header (`X-Cron-Secret`) checked against an environment variable, distinct from Firebase auth entirely.
+These are not user-facing; authenticated as `Authorization: Bearer $CRON_SECRET` (the actual implemented convention — not the literal `X-Cron-Secret` header name this doc previously said, corrected here), distinct from Firebase auth entirely. Schedules are configured in `vercel.json` (`process-jobs` every 1 minute, `release-expired-reservations` every 5 minutes, `purge-stale-data` daily at 03:00).
 
 ---
 

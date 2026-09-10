@@ -12,6 +12,7 @@ import type { UpdateProfileInput } from '@/modules/auth/auth.schema';
 import type { SessionUser } from '@/modules/auth/auth.types';
 import { countRecentEvents, recordEvent } from '@/lib/rate-limit';
 import { RateLimitedError } from '@/lib/errors';
+import { enqueue } from '@/modules/jobs/job.service';
 
 const REAUTH_MAX_AGE_SECONDS = 5 * 60;
 
@@ -111,7 +112,7 @@ export async function establishSession(
   clientName?: string,
 ): Promise<{ user: SessionUser; isNewUser: boolean }> {
   const decoded = await verifyFirebaseToken(req);
-  return findOrCreateUserForFirebaseUid({
+  const result = await findOrCreateUserForFirebaseUid({
     firebaseUid: decoded.uid,
     email: decoded.email ?? '',
     name:
@@ -120,6 +121,19 @@ export async function establishSession(
       decoded.email?.split('@')[0] ??
       'Customer',
   });
+
+  if (result.isNewUser) {
+    // docs/Product_Spec_Requirements.md §10.1's first email trigger.
+    // Deliberately swallowed on failure — a missed welcome email must
+    // never block signup itself.
+    try {
+      await enqueue('send_email', { trigger: 'welcome', userId: result.user.id });
+    } catch (e) {
+      console.error(`Failed to enqueue welcome email for user ${result.user.id}`, e);
+    }
+  }
+
+  return result;
 }
 
 /** GET/PATCH /api/auth/me share this — resolves the caller to a fresh row. */

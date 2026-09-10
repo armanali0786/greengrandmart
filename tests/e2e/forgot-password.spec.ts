@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const EMULATOR_OOB_URL = 'http://127.0.0.1:9099/emulator/v1/projects/demo-greengrandmart/oobCodes';
+const EMULATOR_OOB_URL = 'http://127.0.0.1:9099/emulator/v1/projects/greengrandmart/oobCodes';
 
 async function getLatestOobCode(email: string, requestType: string): Promise<string> {
   const res = await fetch(EMULATOR_OOB_URL);

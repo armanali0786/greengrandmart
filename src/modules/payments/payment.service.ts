@@ -13,7 +13,7 @@ import { PaymentVerificationError } from '@/modules/payments/payment.errors';
 import * as repo from '@/modules/payments/payment.repository';
 import type { ConfirmPaymentInput } from '@/modules/payments/payment.schema';
 import { handleRefundWebhookEvent } from '@/modules/refunds/refund.service';
-import { ensureInvoiceForOrder } from '@/modules/invoices/invoice.service';
+import * as jobService from '@/modules/jobs/job.service';
 
 // ── Client-confirm (necessary, not sufficient) ─────────────────────────────
 
@@ -254,15 +254,15 @@ async function handlePaymentCaptured(body: RazorpayWebhookPayload): Promise<void
     return;
   }
 
-  const confirmed = await db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const order = await orderRepo.findOrderByIdForUpdate(tx, payment.orderId);
-    if (!order) return false;
+    if (!order) return null;
     const fromStatus = order.status as OrderStatus;
     // Belt-and-suspenders beyond the webhook_events uniqueness check: a
     // second captured-style event for an already-confirmed order (or any
     // order no longer in pending_payment) must not double-confirm it or
     // double-convert its reservations.
-    if (fromStatus !== 'pending_payment' || !canTransition(fromStatus, 'confirmed')) return false;
+    if (fromStatus !== 'pending_payment' || !canTransition(fromStatus, 'confirmed')) return null;
 
     await repo.updatePaymentStatus(tx, payment.id, 'captured');
     await repo.createPaymentAttemptRow(tx, {
@@ -281,28 +281,34 @@ async function handlePaymentCaptured(body: RazorpayWebhookPayload): Promise<void
       note: 'Payment captured (Razorpay webhook).',
     });
     await convertReservationsForOrder(tx, payment.orderId);
-    return true;
+    return { userId: order.userId };
   });
 
-  // Deliberately outside the transaction — Storage I/O shouldn't hold a DB
-  // transaction open, same reasoning as checkout.service.ts's payment-
-  // provider call. See invoice.service.ts's doc comment on why this is a
-  // direct call rather than a job_queue enqueue (Phase 9 territory).
-  //
-  // Deliberately swallowed, not rethrown: the order is already correctly
-  // confirmed above by this point, which is the load-bearing outcome this
-  // webhook event must be marked processed for. A Storage hiccup here is a
-  // secondary side effect — letting it flip the whole event back to
-  // "processing_error" (webhook.processWebhookEvent's catch) would make a
-  // future identical delivery a no-op forever (webhook_events' event_id is
-  // already recorded), permanently losing the retry rather than just
-  // degrading invoice generation. Flagged for the same manual-reconciliation
-  // path docs/Security.md §13 already calls for (Phase 12, not built yet).
-  if (confirmed) {
+  // Deliberately outside the transaction — job_queue writes, like the
+  // Storage I/O they used to be (see invoice.service.ts), shouldn't hold a
+  // DB transaction open. The order is already correctly confirmed above by
+  // this point, which is the load-bearing outcome this webhook event must
+  // be marked processed for — a failure enqueueing these secondary jobs
+  // (vanishingly unlikely, same `db` connection) is deliberately swallowed
+  // rather than rethrown, for the same reason invoice generation itself
+  // used to be: it must never flip this event back to "processing_error"
+  // and permanently lose the retry (webhook_events' event_id is already
+  // recorded).
+  if (result) {
     try {
-      await ensureInvoiceForOrder(payment.orderId);
+      await jobService.enqueue('generate_invoice', { orderId: payment.orderId });
+      await jobService.enqueue('send_email', {
+        trigger: 'order_confirmed',
+        userId: result.userId,
+        orderId: payment.orderId,
+      });
+      await jobService.enqueue('send_push', {
+        trigger: 'order_confirmed',
+        userId: result.userId,
+        orderId: payment.orderId,
+      });
     } catch (e) {
-      console.error(`Invoice generation failed for order ${payment.orderId}`, e);
+      console.error(`Failed to enqueue post-confirmation jobs for order ${payment.orderId}`, e);
     }
   }
 }
@@ -351,4 +357,17 @@ async function handlePaymentFailed(body: RazorpayWebhookPayload): Promise<void> 
       rawResponse: body,
     });
   });
+
+  const order = await orderRepo.findOrderById(payment.orderId);
+  if (order) {
+    try {
+      await jobService.enqueue('send_email', {
+        trigger: 'payment_failed',
+        userId: order.userId,
+        orderId: payment.orderId,
+      });
+    } catch (e) {
+      console.error(`Failed to enqueue payment_failed email for order ${payment.orderId}`, e);
+    }
+  }
 }

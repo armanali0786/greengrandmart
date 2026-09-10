@@ -4,6 +4,7 @@ import { NotFoundError } from '@/lib/errors';
 import { requireOwnership, requireRole } from '@/modules/auth/auth.guard';
 import type { SessionUser } from '@/modules/auth/auth.types';
 import { withAudit } from '@/modules/admin/audit';
+import * as jobService from '@/modules/jobs/job.service';
 import * as orderRepo from '@/modules/orders/order.repository';
 import { advanceOrderIfLegal } from '@/modules/orders/order.service';
 import { restockReturnedItem } from '@/modules/inventory/inventory.service';
@@ -102,6 +103,21 @@ export async function requestReturn(
     return row;
   });
 
+  try {
+    await jobService.enqueue('send_email', {
+      trigger: 'return_requested',
+      userId: order.userId,
+      orderId,
+    });
+    await jobService.enqueue('send_push', {
+      trigger: 'return_requested',
+      userId: order.userId,
+      orderId,
+    });
+  } catch (e) {
+    console.error(`Failed to enqueue return_requested notification for order ${orderId}`, e);
+  }
+
   return toReturnView(created);
 }
 
@@ -122,7 +138,7 @@ export async function approveReturn(
   note: string | undefined,
 ): Promise<ReturnView> {
   requireRole(user, ['admin', 'staff']);
-  return withAudit({
+  const approved = await withAudit({
     actorUserId: user.id,
     action: 'RETURN_APPROVED',
     entityType: 'return',
@@ -136,9 +152,32 @@ export async function approveReturn(
         }
         await repo.updateReturnStatusRow(tx, returnId, 'approved');
         await advanceOrderIfLegal(tx, ret.orderId, 'return_approved', user.id, note ?? null);
-        return toReturnView({ ...ret, status: 'approved' });
+        return { orderId: ret.orderId, view: toReturnView({ ...ret, status: 'approved' }) };
       }),
   });
+
+  try {
+    const order = await orderRepo.findOrderById(approved.orderId);
+    if (order) {
+      await jobService.enqueue('send_email', {
+        trigger: 'return_approved',
+        userId: order.userId,
+        orderId: approved.orderId,
+      });
+      await jobService.enqueue('send_push', {
+        trigger: 'return_approved',
+        userId: order.userId,
+        orderId: approved.orderId,
+      });
+    }
+  } catch (e) {
+    console.error(
+      `Failed to enqueue return_approved notification for order ${approved.orderId}`,
+      e,
+    );
+  }
+
+  return approved.view;
 }
 
 export async function rejectReturn(

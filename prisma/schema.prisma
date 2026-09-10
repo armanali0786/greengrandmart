@@ -38,6 +38,7 @@ model User {
   wishlist             Wishlist?
   notifications        Notification[]
   deviceTokens         DeviceToken[]
+  notificationPreference NotificationPreference?
   auditLogs            AuditLog[]            @relation("AuditActor")
   inventoryMovements   InventoryMovement[]
   orderStatusChanges   OrderStatusHistory[]
@@ -255,8 +256,15 @@ model Cart {
   items        CartItem[]
   reservations InventoryReservation[]
 
-  @@index([userId], map: "idx_carts_user")
-  @@index([sessionId], map: "idx_carts_session")
+  // No @@index([userId])/@@index([sessionId]) declared here — the real
+  // indexes are UNIQUE partial ones (`idx_carts_user`/`idx_carts_session`,
+  // WHERE status='active', migration `unique_active_cart_per_owner`),
+  // which Prisma's schema DSL can't express. Declaring plain indexes with
+  // those same names here caused `prisma migrate dev` to repeatedly try
+  // (and fail) to (re)create them on every subsequent migration — see the
+  // Phase 8/9 migration-drift notes. The real indexes still exist in the
+  // DB, hand-authored in their own migration; this model just doesn't
+  // (mis)declare them.
   @@map("carts")
 }
 
@@ -642,6 +650,24 @@ model DeviceToken {
   @@map("device_tokens")
 }
 
+// Not in Data_Model_DB_Schema.md — Product_Spec_Requirements.md §10.3
+// describes a preferences page ("toggle email/push per category: order
+// updates, promotions") but no backing table was ever specified anywhere.
+// Added this phase, documented in a Data_Model_DB_Schema.md §10 addendum.
+model NotificationPreference {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String   @unique @map("user_id") @db.Uuid
+  emailOrderUpdates Boolean  @default(true) @map("email_order_updates")
+  emailPromotions   Boolean  @default(true) @map("email_promotions")
+  pushOrderUpdates  Boolean  @default(true) @map("push_order_updates")
+  pushPromotions    Boolean  @default(true) @map("push_promotions")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // OTP (MSG91 — COD confirmation only)
 // ─────────────────────────────────────────────────────────────────────────
@@ -676,6 +702,12 @@ model JobQueue {
   runAfter    DateTime  @default(now()) @map("run_after")
   createdAt   DateTime  @default(now()) @map("created_at")
   processedAt DateTime? @map("processed_at")
+  // Not in Data_Model_DB_Schema.md's original job_queue definition — a
+  // 'failed' job with no place to record *why* isn't diagnosable from the
+  // admin "failed jobs" view the plan calls for (§6/§9). Added this phase,
+  // documented in a Data_Model_DB_Schema.md §12 addendum, same pattern as
+  // prior ad-hoc column/table additions (rate_limit_events, invoices).
+  lastError   String?   @map("last_error")
 
   @@index([status, runAfter], map: "idx_jobs_pending")
   @@map("job_queue")

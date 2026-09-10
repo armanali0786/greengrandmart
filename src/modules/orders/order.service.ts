@@ -7,6 +7,8 @@ import { releaseReservationsForOrder } from '@/modules/inventory/inventory.servi
 import { getShipmentView, recordShipmentProgress } from '@/modules/shipping/shipment.service';
 import { findReturnsForOrder } from '@/modules/returns/return.repository';
 import { withAudit } from '@/modules/admin/audit';
+import * as jobService from '@/modules/jobs/job.service';
+import type { NotificationTrigger } from '@/modules/jobs/job.types';
 import * as repo from '@/modules/orders/order.repository';
 import type {
   AdminOrderListRow,
@@ -27,6 +29,31 @@ import type {
   OrderStatus,
   OrderSummary,
 } from '@/modules/orders/order.types';
+
+/** docs/Product_Spec_Requirements.md §10.1's trigger list — every order status the customer should hear about by email/push; anything not listed here (e.g. cancel_requested, return_requested/approved — the latter two have their own return.service.ts triggers) doesn't get a job. */
+const STATUS_TO_TRIGGER: Partial<Record<OrderStatus, NotificationTrigger>> = {
+  processing: 'order_processing',
+  packed: 'order_packed',
+  shipped: 'order_shipped',
+  out_for_delivery: 'order_out_for_delivery',
+  delivered: 'order_delivered',
+  cancelled: 'order_cancelled',
+};
+
+async function enqueueStatusNotification(
+  orderId: string,
+  userId: string,
+  status: OrderStatus,
+): Promise<void> {
+  const trigger = STATUS_TO_TRIGGER[status];
+  if (!trigger) return;
+  try {
+    await jobService.enqueue('send_email', { trigger, userId, orderId });
+    await jobService.enqueue('send_push', { trigger, userId, orderId });
+  } catch (e) {
+    console.error(`Failed to enqueue ${trigger} notification for order ${orderId}`, e);
+  }
+}
 
 function toOrderSummary(row: OrderListRow): OrderSummary {
   return {
@@ -143,6 +170,8 @@ export async function cancelOrder(user: SessionUser, orderId: string): Promise<O
     });
   });
 
+  await enqueueStatusNotification(orderId, user.id, 'cancelled');
+
   const updated = await repo.findOrderById(orderId);
   if (!updated) throw new NotFoundError('Order not found.');
   return toOrderDetail(updated);
@@ -250,6 +279,8 @@ export async function updateOrderStatusAdmin(
         await recordShipmentProgress(tx, orderId, input.status, input.shipment);
       }),
   });
+
+  await enqueueStatusNotification(orderId, existing.userId, input.status);
 
   const updated = await repo.findOrderById(orderId);
   if (!updated) throw new NotFoundError('Order not found.');

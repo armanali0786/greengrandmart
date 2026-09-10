@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/release-expired-reservations",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/process-jobs",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/purge-stale-data",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

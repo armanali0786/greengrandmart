@@ -8,6 +8,7 @@ import { useCart } from '@/hooks/useCart';
 import { getFirebaseAuth } from '@/lib/firebase-client';
 import { Button } from '@/components/ui/Button';
 import { SearchBar } from '@/components/storefront/SearchBar';
+import { NotificationBell } from '@/components/storefront/NotificationBell';
 import { cn } from '@/lib/cn';
 
 /**
@@ -62,6 +63,7 @@ export function Header() {
             <div className="bg-primary-50 h-9 w-20 animate-pulse rounded-[10px]" />
           ) : firebaseUser ? (
             <>
+              <NotificationBell />
               <Link
                 href="/account"
                 className="text-foreground hover:text-primary-700 flex items-center gap-1.5 text-sm font-medium"

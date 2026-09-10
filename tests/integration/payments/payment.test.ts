@@ -6,6 +6,7 @@ import { env } from '@/config/env';
 import { createTestUser, deleteTestUser } from '../../fixtures/users';
 import { createTestAddress } from '../../fixtures/addresses';
 import { createTestVariant, deleteTestProduct } from '../../fixtures/catalog';
+import { deleteJobsForOrder } from '../../fixtures/jobs';
 import { addItem } from '@/modules/cart/cart.service';
 import { createOrder } from '@/modules/orders/checkout.service';
 import {
@@ -16,8 +17,10 @@ import {
 import { PaymentVerificationError } from '@/modules/payments/payment.errors';
 import { InvalidOrderStateError } from '@/modules/orders/order.errors';
 import { ForbiddenError } from '@/modules/auth/auth.errors';
+import { processPendingJobs } from '@/modules/jobs/job.service';
 
 async function deleteTestOrder(orderId: string): Promise<void> {
+  await deleteJobsForOrder(orderId);
   await db.invoice.deleteMany({ where: { orderId } });
   await db.paymentAttempt.deleteMany({ where: { payment: { orderId } } });
   await db.payment.deleteMany({ where: { orderId } });
@@ -215,9 +218,19 @@ describe('payment.service.processWebhookEvent', () => {
       });
       expect(reservation.status).toBe('converted');
 
-      // docs/Architecture.md §5.2/§5.3: invoice generation is triggered by
-      // payment.captured, called directly from handlePaymentCaptured
-      // (Phase 8 — see invoice.service.ts's ensureInvoiceForOrder).
+      // docs/Architecture.md §5.2/§5.3: payment.captured enqueues invoice
+      // generation (and notification jobs) via job_queue — Phase 9's
+      // job.service replaced the direct synchronous call Phase 8 used.
+      // Processing the queue here simulates the /cron/process-jobs sweep.
+      const invoiceJob = await db.jobQueue.findFirstOrThrow({
+        where: {
+          type: 'generate_invoice',
+          payload: { path: ['orderId'], equals: result.orderId },
+        },
+      });
+      expect(invoiceJob.payload).toMatchObject({ orderId: result.orderId });
+
+      await processPendingJobs();
       const invoice = await db.invoice.findUniqueOrThrow({ where: { orderId: result.orderId } });
       expect(invoice.storagePath).toBe(`invoices/${result.orderId}.pdf`);
     } finally {

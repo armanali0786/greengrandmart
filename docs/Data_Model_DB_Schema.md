@@ -584,7 +584,19 @@ CREATE TABLE device_tokens (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_device_tokens_user ON device_tokens(user_id);
+
+CREATE TABLE notification_preferences (
+  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id               uuid NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  email_order_updates   boolean NOT NULL DEFAULT true,
+  email_promotions      boolean NOT NULL DEFAULT true,
+  push_order_updates    boolean NOT NULL DEFAULT true,
+  push_promotions       boolean NOT NULL DEFAULT true,
+  updated_at            timestamptz NOT NULL DEFAULT now()
+);
 ```
+
+> **Phase 9 addition:** `notification_preferences` is new — Product_Spec_Requirements.md §10.3 describes a preferences page ("toggle email/push per category: order updates, promotions") but never specified a backing table. One row per user, created lazily (defaults all `true`) the first time a user's preferences are read or written — there's no signup-time row creation, so `PATCH /notifications/preferences` and the job dispatcher's "should I actually send this?" check both upsert rather than assuming the row exists.
 
 ---
 
@@ -622,7 +634,10 @@ CREATE TABLE job_queue (
   max_attempts  integer NOT NULL DEFAULT 3,
   run_after     timestamptz NOT NULL DEFAULT now(),
   created_at    timestamptz NOT NULL DEFAULT now(),
-  processed_at  timestamptz
+  processed_at  timestamptz,
+  last_error    text  -- Phase 9 addition: no column anywhere recorded *why*
+                       -- a job failed, making the plan's own "admin can see
+                       -- failed jobs" requirement (§6/§9) undiagnosable.
 );
 CREATE INDEX idx_jobs_pending ON job_queue(status, run_after) WHERE status = 'pending';
 

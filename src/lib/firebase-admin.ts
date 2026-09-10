@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getMessaging } from 'firebase-admin/messaging';
 import { env } from '@/config/env';
 
 // When pointed at the emulator, the Admin SDK talks to it over
@@ -36,3 +37,6 @@ export function getFirebaseAdminApp(): App {
 }
 
 export const firebaseAdminAuth = getAuth(getFirebaseAdminApp());
+// Reuses the same already-configured service account as Auth — no new env
+// var needed for FCM (Phase 9's PushProvider).
+export const firebaseAdminMessaging = getMessaging(getFirebaseAdminApp());

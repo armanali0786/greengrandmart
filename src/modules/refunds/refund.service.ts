@@ -3,6 +3,7 @@ import { NotFoundError } from '@/lib/errors';
 import { requireRole } from '@/modules/auth/auth.guard';
 import type { SessionUser } from '@/modules/auth/auth.types';
 import { withAudit } from '@/modules/admin/audit';
+import * as jobService from '@/modules/jobs/job.service';
 import * as orderRepo from '@/modules/orders/order.repository';
 import { advanceOrderIfLegal } from '@/modules/orders/order.service';
 import { InvalidOrderStateError } from '@/modules/orders/order.errors';
@@ -70,7 +71,7 @@ export async function initiateRefund(
     throw new InvalidOrderStateError('Refund amount would exceed the order total.');
   }
 
-  return withAudit({
+  const initiated = await withAudit({
     actorUserId: user.id,
     action: 'REFUND_INITIATED',
     entityType: 'refund',
@@ -120,6 +121,23 @@ export async function initiateRefund(
       });
     },
   });
+
+  try {
+    await jobService.enqueue('send_email', {
+      trigger: 'refund_initiated',
+      userId: order.userId,
+      orderId: input.orderId,
+    });
+    await jobService.enqueue('send_push', {
+      trigger: 'refund_initiated',
+      userId: order.userId,
+      orderId: input.orderId,
+    });
+  } catch (e) {
+    console.error(`Failed to enqueue refund_initiated notification for order ${input.orderId}`, e);
+  }
+
+  return initiated;
 }
 
 export async function listRefundsForAdmin(
@@ -162,5 +180,28 @@ export async function handleRefundWebhookEvent(params: {
         'Refund completed (Razorpay webhook).',
       ),
     );
+  }
+
+  if (nextStatus === 'completed') {
+    try {
+      const order = await orderRepo.findOrderById(refund.orderId);
+      if (order) {
+        await jobService.enqueue('send_email', {
+          trigger: 'refund_completed',
+          userId: order.userId,
+          orderId: refund.orderId,
+        });
+        await jobService.enqueue('send_push', {
+          trigger: 'refund_completed',
+          userId: order.userId,
+          orderId: refund.orderId,
+        });
+      }
+    } catch (e) {
+      console.error(
+        `Failed to enqueue refund_completed notification for order ${refund.orderId}`,
+        e,
+      );
+    }
   }
 }

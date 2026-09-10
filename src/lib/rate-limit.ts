@@ -43,3 +43,17 @@ export async function enforceRateLimit(key: string, options: RateLimitOptions): 
   }
   await recordEvent(key);
 }
+
+/**
+ * Data_Model_DB_Schema.md §12's rate_limit_events addendum: "a daily
+ * cleanup job... should delete rows older than the longest configured
+ * window" — no window used anywhere in this codebase exceeds a few
+ * minutes, so 24h is a safe, generous retention. Called by the Phase 9
+ * `/cron/purge-stale-data` route alongside the equivalent otp_requests purge.
+ */
+export async function purgeOldRateLimitEvents(): Promise<number> {
+  const result = await db.rateLimitEvent.deleteMany({
+    where: { createdAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+  });
+  return result.count;
+}

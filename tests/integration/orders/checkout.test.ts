@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { createTestUser, deleteTestUser } from '../../fixtures/users';
 import { createTestAddress } from '../../fixtures/addresses';
 import { createTestVariant, deleteTestProduct } from '../../fixtures/catalog';
+import { deleteJobsForOrder } from '../../fixtures/jobs';
 import { addItem } from '@/modules/cart/cart.service';
 import { createOrder } from '@/modules/orders/checkout.service';
 import {
@@ -21,6 +22,7 @@ async function getInventory(variantId: string) {
 }
 
 async function deleteTestOrder(orderId: string): Promise<void> {
+  await deleteJobsForOrder(orderId);
   await db.couponRedemption.deleteMany({ where: { orderId } });
   await db.inventoryReservation.deleteMany({ where: { orderId } });
   await db.payment.deleteMany({ where: { orderId } });

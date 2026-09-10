@@ -283,6 +283,21 @@ refunded` when `type === 'full'` — a `partial`/`item`/`shipping` refund
 - On successful verification, order proceeds to creation; on failure/expiry, customer must request a new code
 - OTP requests never block/delay online-payment checkouts — this flow is COD-only
 
+> **Phase 9 implementation addendum:** the OTP infrastructure above
+> (`POST /otp/request`, `POST /otp/verify`, MSG91 `SmsProvider`, rate
+> limiting, hashing) is fully built and independently testable — but
+> `POST /checkout`'s `paymentMethod` still only accepts `'online'`. COD
+> eligibility (pincode/order-value rules) is a separate, still-unconfirmed
+> business decision (`PRD.md` §14) that gates opening the checkout schema
+> itself, same as Phase 6/7 already documented. Also: `otp` owns the MSG91
+> SMS send directly and synchronously (never through `job_queue`) — unlike
+> every notification trigger, an OTP send must report success/failure back
+> to the checkout flow immediately, and no other feature in this spec sends
+> SMS, so there's no shared `send_sms` job consumer to justify queuing it.
+> The 6-digit code is hashed with a per-request random salt (not a single
+> server-wide key) — a leaked `otp_requests` table doesn't let one
+> precomputed table crack every row at once.
+
 ---
 
 ## 10. Notifications
@@ -302,6 +317,30 @@ Sent for: welcome, email verification (via Firebase), password reset (via Fireba
 
 - List of notifications with read/unread state, mark-as-read, mark-all-as-read
 - Preferences page: toggle email/push per category (order updates, promotions)
+
+> **Phase 9 implementation addendum:**
+>
+> - "Email verification"/"password reset" are sent natively by Firebase
+>   Auth, never routed through this system's `job_queue`/Resend pipeline —
+>   listed in §10.1 only for completeness of "what email a customer gets."
+> - "Invoice attached" is a link to `GET /orders/:id/invoice` inside the
+>   `order_confirmed` email body, not a real MIME attachment — invoice
+>   generation is a separate job that may not have finished by the time the
+>   email job runs (both are enqueued together, dispatch order isn't
+>   guaranteed), so hard-linking rather than attaching avoids that ordering
+>   dependency entirely.
+> - `welcome` isn't gated by the email/push preference toggles — there's no
+>   "account" category in the 2-category model (order updates, promotions),
+>   and a welcome email isn't something a customer opts out of before ever
+>   seeing the preferences page.
+> - The in-app notification-center row for a given event is created once,
+>   by the `send_email` job (not `send_push`) — both are always enqueued
+>   together at every trigger site, so having only one of them own the
+>   in-app row avoids a duplicate. The in-app row itself is always created
+>   regardless of the user's email preference; only the actual email send
+>   respects `emailOrderUpdates`.
+> - `notification_preferences` (new table, `Data_Model_DB_Schema.md` §10
+>   addendum) is created lazily on first read/write, not at signup.
 
 ---
 

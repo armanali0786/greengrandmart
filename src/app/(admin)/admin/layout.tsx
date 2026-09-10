@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: '/admin/refunds', label: 'Refunds' },
   { href: '/admin/coupons', label: 'Coupons' },
   { href: '/admin/promotions', label: 'Promotions' },
+  { href: '/admin/jobs', label: 'Jobs' },
 ];
 
 export default function AdminLayout({ children }: LayoutProps<'/admin'>) {

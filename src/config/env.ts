@@ -45,6 +45,10 @@ const serverEnvSchema = z.object({
   // Business timing rules
   RESERVATION_TTL_MINUTES: z.coerce.number().int().positive().default(15),
   OTP_EXPIRY_SECONDS: z.coerce.number().int().positive().default(300),
+  // Product_Spec_Requirements.md §9 / ECOMMERCE_IMPLEMENTATION_PLAN.md §5.2
+  // both state a "60-second cooldown between resends" but no env var was
+  // ever provisioned for it — added this phase.
+  OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().positive().default(60),
   // PRD.md §14 open question, confirmed by the business at Phase 8: 7 days.
   RETURN_WINDOW_DAYS: z.coerce.number().int().positive().default(7),
 
