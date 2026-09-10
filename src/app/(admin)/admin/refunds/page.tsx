@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 import type { AdminRefundSummary, RefundStatus, RefundType } from '@/modules/refunds/refund.types';
 
 interface AdminRefundsPage {
@@ -31,6 +32,7 @@ const STATUS_BADGE: Record<RefundStatus, string> = {
 
 export default function AdminRefundsPage() {
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const [creating, setCreating] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [type, setType] = useState<RefundType>('full');
@@ -62,8 +64,13 @@ export default function AdminRefundsPage() {
       setAmount('');
       setReason('');
       setError(null);
+      show({ message: 'Refund initiated.', variant: 'success' });
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not initiate refund.'),
+    onError: (e) => {
+      const message = e instanceof ApiError ? e.message : 'Could not initiate refund.';
+      setError(message);
+      show({ message, variant: 'error' });
+    },
   });
 
   return (

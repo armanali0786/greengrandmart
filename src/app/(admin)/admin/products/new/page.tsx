@@ -7,11 +7,13 @@ import { ApiError } from '@/lib/api-client';
 import { useState } from 'react';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 import type { CategoryNode, BrandSummary } from '@/modules/catalog/catalog.types';
 import type { CreateProductInput } from '@/modules/catalog/catalog.schema';
 
 export default function NewProductPage() {
   const router = useRouter();
+  const { show } = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const { data: categories } = useQuery({
@@ -30,9 +32,12 @@ export default function NewProductPage() {
         method: 'POST',
         body: JSON.stringify(input),
       });
+      show({ message: 'Product created.', variant: 'success' });
       router.push(`/admin/products/${product.id}/edit`);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.');
+      const message = e instanceof ApiError ? e.message : 'Something went wrong. Please try again.';
+      setError(message);
+      show({ message, variant: 'error' });
     }
   }
 

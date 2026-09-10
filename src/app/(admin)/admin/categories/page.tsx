@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 
 function flatten(nodes: CategoryNode[], depth = 0): (CategoryNode & { depth: number })[] {
   return nodes.flatMap((n) => [{ ...n, depth }, ...flatten(n.children, depth + 1)]);
@@ -20,6 +21,7 @@ function flatten(nodes: CategoryNode[], depth = 0): (CategoryNode & { depth: num
 
 export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const {
     data: tree,
     isLoading,
@@ -62,7 +64,13 @@ export default function AdminCategoriesPage() {
     onSuccess: () => {
       invalidate();
       setDeleting(null);
+      show({ message: 'Category deleted.', variant: 'success' });
     },
+    onError: (e) =>
+      show({
+        message: e instanceof ApiError ? e.message : 'Could not delete category.',
+        variant: 'error',
+      }),
   });
 
   async function onSubmit(data: CreateCategoryInput) {
@@ -78,8 +86,11 @@ export default function AdminCategoriesPage() {
       }
       invalidate();
       setFormOpen(false);
+      show({ message: editing ? 'Category updated.' : 'Category created.', variant: 'success' });
     } catch (e) {
-      setFormError(e instanceof ApiError ? e.message : 'Something went wrong.');
+      const message = e instanceof ApiError ? e.message : 'Something went wrong.';
+      setFormError(message);
+      show({ message, variant: 'error' });
     }
   }
 

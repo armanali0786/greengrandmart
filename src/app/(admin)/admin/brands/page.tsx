@@ -13,9 +13,11 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 
 export default function AdminBrandsPage() {
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const {
     data: brands,
     isLoading,
@@ -57,7 +59,13 @@ export default function AdminBrandsPage() {
     onSuccess: () => {
       invalidate();
       setDeleting(null);
+      show({ message: 'Brand deleted.', variant: 'success' });
     },
+    onError: (e) =>
+      show({
+        message: e instanceof ApiError ? e.message : 'Could not delete brand.',
+        variant: 'error',
+      }),
   });
 
   async function onSubmit(data: CreateBrandInput) {
@@ -73,8 +81,11 @@ export default function AdminBrandsPage() {
       }
       invalidate();
       setFormOpen(false);
+      show({ message: editing ? 'Brand updated.' : 'Brand created.', variant: 'success' });
     } catch (e) {
-      setFormError(e instanceof ApiError ? e.message : 'Something went wrong.');
+      const message = e instanceof ApiError ? e.message : 'Something went wrong.';
+      setFormError(message);
+      show({ message, variant: 'error' });
     }
   }
 

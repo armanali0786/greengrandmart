@@ -5,11 +5,12 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import { authFetch } from '@/lib/api-client';
+import { authFetch, ApiError } from '@/lib/api-client';
 import { toRupeeDisplay } from '@/lib/money';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 import type { AdminProductListItem, PaginatedResult } from '@/modules/catalog/catalog.types';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -20,6 +21,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const [archivingId, setArchivingId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -33,7 +35,13 @@ export default function AdminProductsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
       setArchivingId(null);
+      show({ message: 'Product archived.', variant: 'success' });
     },
+    onError: (e) =>
+      show({
+        message: e instanceof ApiError ? e.message : 'Could not archive product.',
+        variant: 'error',
+      }),
   });
 
   const archivingProduct = data?.items.find((p) => p.id === archivingId);

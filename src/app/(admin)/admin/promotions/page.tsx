@@ -12,6 +12,7 @@ import type { CategoryNode, BrandSummary } from '@/modules/catalog/catalog.types
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 
 function promotionValueLabel(promotion: PromotionSummary): string {
   if (promotion.rules.type === 'free_shipping') {
@@ -40,6 +41,7 @@ function promotionStatus(promotion: PromotionSummary): { label: string; classNam
 
 export default function AdminPromotionsPage() {
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const {
     data: promotions,
     isLoading,
@@ -69,7 +71,18 @@ export default function AdminPromotionsPage() {
         method: 'PATCH',
         body: JSON.stringify({ active }),
       }),
-    onSuccess: invalidate,
+    onSuccess: (_data, variables) => {
+      invalidate();
+      show({
+        message: variables.active ? 'Promotion activated.' : 'Promotion deactivated.',
+        variant: 'success',
+      });
+    },
+    onError: (e) =>
+      show({
+        message: e instanceof ApiError ? e.message : 'Could not update promotion.',
+        variant: 'error',
+      }),
   });
 
   function openCreate() {
@@ -96,8 +109,11 @@ export default function AdminPromotionsPage() {
       }
       invalidate();
       setFormOpen(false);
+      show({ message: editing ? 'Promotion updated.' : 'Promotion created.', variant: 'success' });
     } catch (e) {
-      setFormError(e instanceof ApiError ? e.message : 'Something went wrong.');
+      const message = e instanceof ApiError ? e.message : 'Something went wrong.';
+      setFormError(message);
+      show({ message, variant: 'error' });
     }
   }
 

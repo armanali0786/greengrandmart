@@ -10,6 +10,7 @@ import {
 } from '@/components/admin/ProductForm';
 import { ProductImageManager } from '@/components/admin/ProductImageManager';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 import type {
   CategoryNode,
   BrandSummary,
@@ -20,8 +21,8 @@ import type { UpdateProductInput } from '@/modules/catalog/catalog.schema';
 export default function EditProductPage({ params }: PageProps<'/admin/products/[id]/edit'>) {
   const { id } = use(params);
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   const { data: product, isLoading: productLoading } = useQuery({
     queryKey: ['admin', 'products', id],
@@ -38,7 +39,6 @@ export default function EditProductPage({ params }: PageProps<'/admin/products/[
 
   async function handleSubmit(input: UpdateProductInput) {
     setError(null);
-    setSaved(false);
     try {
       await authFetch(`/api/admin/products/${id}`, {
         method: 'PATCH',
@@ -46,9 +46,11 @@ export default function EditProductPage({ params }: PageProps<'/admin/products/[
       });
       queryClient.invalidateQueries({ queryKey: ['admin', 'products', id] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
-      setSaved(true);
+      show({ message: 'Product saved.', variant: 'success' });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.');
+      const message = e instanceof ApiError ? e.message : 'Something went wrong. Please try again.';
+      setError(message);
+      show({ message, variant: 'error' });
     }
   }
 
@@ -117,14 +119,6 @@ export default function EditProductPage({ params }: PageProps<'/admin/products/[
         <ProductImageManager productId={id} />
       </section>
 
-      {saved && (
-        <p
-          role="status"
-          className="bg-primary-50 text-primary-700 mb-4 rounded-[10px] px-3 py-2 text-sm"
-        >
-          Saved.
-        </p>
-      )}
       {error && (
         <p role="alert" className="bg-error-bg text-error mb-4 rounded-[10px] px-3 py-2 text-sm">
           {error}

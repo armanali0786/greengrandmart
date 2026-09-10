@@ -12,6 +12,7 @@ import type { CategoryNode, BrandSummary } from '@/modules/catalog/catalog.types
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 
 function couponValueLabel(coupon: CouponSummary): string {
   return coupon.type === 'percentage' ? `${coupon.value}%` : toRupeeDisplay(coupon.value);
@@ -27,6 +28,7 @@ function couponStatus(coupon: CouponSummary): { label: string; className: string
 
 export default function AdminCouponsPage() {
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const {
     data: coupons,
     isLoading,
@@ -53,7 +55,18 @@ export default function AdminCouponsPage() {
   const toggleActive = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
       authFetch(`/api/admin/coupons/${id}`, { method: 'PATCH', body: JSON.stringify({ active }) }),
-    onSuccess: invalidate,
+    onSuccess: (_data, variables) => {
+      invalidate();
+      show({
+        message: variables.active ? 'Coupon activated.' : 'Coupon deactivated.',
+        variant: 'success',
+      });
+    },
+    onError: (e) =>
+      show({
+        message: e instanceof ApiError ? e.message : 'Could not update coupon.',
+        variant: 'error',
+      }),
   });
 
   function openCreate() {
@@ -80,8 +93,11 @@ export default function AdminCouponsPage() {
       }
       invalidate();
       setFormOpen(false);
+      show({ message: editing ? 'Coupon updated.' : 'Coupon created.', variant: 'success' });
     } catch (e) {
-      setFormError(e instanceof ApiError ? e.message : 'Something went wrong.');
+      const message = e instanceof ApiError ? e.message : 'Something went wrong.';
+      setFormError(message);
+      show({ message, variant: 'error' });
     }
   }
 

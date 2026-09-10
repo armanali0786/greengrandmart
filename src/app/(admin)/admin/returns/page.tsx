@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 import type { AdminReturnSummary, ReturnStatus } from '@/modules/returns/return.types';
 
 interface AdminReturnsPage {
@@ -32,6 +33,7 @@ const STATUS_FILTERS: { value: ReturnStatus | ''; label: string }[] = [
 
 export default function AdminReturnsPage() {
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const [status, setStatus] = useState<ReturnStatus | ''>('');
   const [error, setError] = useState<string | null>(null);
 
@@ -53,8 +55,15 @@ export default function AdminReturnsPage() {
         method: 'PATCH',
         body: JSON.stringify({ action: 'approve' }),
       }),
-    onSuccess: invalidate,
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not approve return.'),
+    onSuccess: () => {
+      invalidate();
+      show({ message: 'Return approved.', variant: 'success' });
+    },
+    onError: (e) => {
+      const message = e instanceof ApiError ? e.message : 'Could not approve return.';
+      setError(message);
+      show({ message, variant: 'error' });
+    },
   });
 
   const reject = useMutation({
@@ -63,21 +72,42 @@ export default function AdminReturnsPage() {
         method: 'PATCH',
         body: JSON.stringify({ action: 'reject' }),
       }),
-    onSuccess: invalidate,
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not reject return.'),
+    onSuccess: () => {
+      invalidate();
+      show({ message: 'Return rejected.', variant: 'success' });
+    },
+    onError: (e) => {
+      const message = e instanceof ApiError ? e.message : 'Could not reject return.';
+      setError(message);
+      show({ message, variant: 'error' });
+    },
   });
 
   const markReceived = useMutation({
     mutationFn: (id: string) =>
       authFetch(`/api/admin/returns/${id}/receive`, { method: 'POST', body: JSON.stringify({}) }),
-    onSuccess: invalidate,
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not mark item received.'),
+    onSuccess: () => {
+      invalidate();
+      show({ message: 'Item marked received.', variant: 'success' });
+    },
+    onError: (e) => {
+      const message = e instanceof ApiError ? e.message : 'Could not mark item received.';
+      setError(message);
+      show({ message, variant: 'error' });
+    },
   });
 
   const complete = useMutation({
     mutationFn: (id: string) => authFetch(`/api/admin/returns/${id}/complete`, { method: 'POST' }),
-    onSuccess: invalidate,
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not complete return.'),
+    onSuccess: () => {
+      invalidate();
+      show({ message: 'Return completed.', variant: 'success' });
+    },
+    onError: (e) => {
+      const message = e instanceof ApiError ? e.message : 'Could not complete return.';
+      setError(message);
+      show({ message, variant: 'error' });
+    },
   });
 
   return (

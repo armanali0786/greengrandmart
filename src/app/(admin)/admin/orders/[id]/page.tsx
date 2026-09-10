@@ -9,6 +9,7 @@ import { orderStatusBadgeClass, orderStatusLabel } from '@/lib/order-status-disp
 import type { OrderDetail, OrderStatus } from '@/modules/orders/order.types';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 
 const SHIPMENT_STATUSES: ReadonlySet<OrderStatus> = new Set([
   'packed',
@@ -38,6 +39,7 @@ const STATUS_OPTIONS: OrderStatus[] = [
 export default function AdminOrderDetailPage({ params }: PageProps<'/admin/orders/[id]'>) {
   const { id } = use(params);
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const [nextStatus, setNextStatus] = useState<OrderStatus | ''>('');
   const [note, setNote] = useState('');
   const [carrier, setCarrier] = useState('');
@@ -79,8 +81,13 @@ export default function AdminOrderDetailPage({ params }: PageProps<'/admin/order
       setTrackingNumber('');
       setEstimatedDelivery('');
       setError(null);
+      show({ message: 'Order status updated.', variant: 'success' });
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Could not update status.'),
+    onError: (e) => {
+      const message = e instanceof ApiError ? e.message : 'Could not update status.';
+      setError(message);
+      show({ message, variant: 'error' });
+    },
   });
 
   if (isLoading) {

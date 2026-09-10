@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { IndeterminateBar } from '@/components/ui/ProgressBar';
 import { Spinner } from '@/components/ui/Spinner';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 import type { ProductImageDetail } from '@/modules/catalog/catalog.types';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -19,6 +20,7 @@ type UploadStage = 'uploading' | 'processing' | null;
 
 export function ProductImageManager({ productId }: { productId: string }) {
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<UploadStage>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +37,15 @@ export function ProductImageManager({ productId }: { productId: string }) {
   const deleteMutation = useMutation({
     mutationFn: (imageId: string) =>
       authFetch(`/api/admin/products/${productId}/images/${imageId}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      show({ message: 'Image deleted.', variant: 'success' });
+    },
+    onError: (e) =>
+      show({
+        message: e instanceof ApiError ? e.message : 'Could not delete image.',
+        variant: 'error',
+      }),
   });
 
   const reorderMutation = useMutation({
@@ -45,6 +55,11 @@ export function ProductImageManager({ productId }: { productId: string }) {
         body: JSON.stringify(payload),
       }),
     onSuccess: invalidate,
+    onError: (e) =>
+      show({
+        message: e instanceof ApiError ? e.message : 'Could not reorder images.',
+        variant: 'error',
+      }),
   });
 
   const setPrimaryMutation = useMutation({
@@ -53,7 +68,15 @@ export function ProductImageManager({ productId }: { productId: string }) {
         method: 'PATCH',
         body: JSON.stringify({ isPrimary: true }),
       }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      show({ message: 'Primary image updated.', variant: 'success' });
+    },
+    onError: (e) =>
+      show({
+        message: e instanceof ApiError ? e.message : 'Could not set primary image.',
+        variant: 'error',
+      }),
   });
 
   function move(index: number, direction: -1 | 1) {
@@ -119,8 +142,11 @@ export function ProductImageManager({ productId }: { productId: string }) {
         body: JSON.stringify({ storagePath, isPrimary: !images || images.length === 0 }),
       });
       invalidate();
+      show({ message: 'Image uploaded.', variant: 'success' });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Upload failed. Please try again.');
+      const message = e instanceof ApiError ? e.message : 'Upload failed. Please try again.';
+      setError(message);
+      show({ message, variant: 'error' });
     } finally {
       setStage(null);
     }

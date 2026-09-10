@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 
 function attributesText(attrs: Record<string, string>): string {
   return Object.entries(attrs)
@@ -20,6 +21,7 @@ function attributesText(attrs: Record<string, string>): string {
 
 export default function AdminInventoryPage() {
   const queryClient = useQueryClient();
+  const { show } = useToast();
   const { data: items, isLoading } = useQuery({
     queryKey: ['admin', 'inventory'],
     queryFn: () => authFetch<InventoryListItem[]>('/api/admin/inventory'),
@@ -53,8 +55,13 @@ export default function AdminInventoryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'inventory'] });
       setAdjusting(null);
+      show({ message: 'Stock adjusted.', variant: 'success' });
     },
-    onError: (e) => setFormError(e instanceof ApiError ? e.message : 'Something went wrong.'),
+    onError: (e) => {
+      const message = e instanceof ApiError ? e.message : 'Something went wrong.';
+      setFormError(message);
+      show({ message, variant: 'error' });
+    },
   });
 
   return (
