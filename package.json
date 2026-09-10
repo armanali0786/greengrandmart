@@ -20,7 +20,8 @@
     "db:studio": "prisma studio",
     "set-user-role": "tsx scripts/set-user-role.ts",
     "emulators": "firebase emulators:start --only auth,storage",
-    "prepare": "husky"
+    "prepare": "husky",
+    "postinstall": "prisma generate"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
