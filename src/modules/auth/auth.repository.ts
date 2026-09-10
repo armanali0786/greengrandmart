@@ -64,12 +64,17 @@ export async function findOrCreateUserForFirebaseUid(params: {
     // Disambiguate firebase_uid vs. email conflicts by re-querying rather
     // than parsing `e.meta.target` — the pg driver adapter doesn't populate
     // it the way the classic engine does. A hit here means it was genuinely
-    // the concurrent-create race described above; a miss means the create
-    // failed for some other unique constraint (e.g. email), which we must
-    // not silently swallow.
+    // the concurrent-create race described above.
     const existing = await findUserByFirebaseUid(params.firebaseUid);
-    if (!existing) throw e;
-    return { user: existing, isNewUser: false };
+    if (existing) return { user: existing, isNewUser: false };
+
+    const byEmail = await db.user.findUnique({ where: { email: params.email, deletedAt: null } });
+    if (!byEmail) throw e;
+    const relinked = await db.user.update({
+      where: { id: byEmail.id },
+      data: { firebaseUid: params.firebaseUid },
+    });
+    return { user: toSessionUser(relinked), isNewUser: false };
   }
 }
 
