@@ -6,6 +6,7 @@ import { PackageSearch } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
 import { toRupeeDisplay } from '@/lib/money';
 import { orderStatusBadgeClass, orderStatusLabel } from '@/lib/order-status-display';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { OrderSummary } from '@/modules/orders/order.types';
 
 interface OrdersPage {
@@ -20,7 +21,25 @@ export default function OrdersPage() {
   });
 
   if (isLoading) {
-    return <div className="bg-primary-50 h-48 animate-pulse rounded-[10px]" />;
+    return (
+      <div className="flex flex-col gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="border-border bg-surface flex items-center justify-between gap-4 rounded-[10px] border p-4"
+          >
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3 w-44" />
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <Skeleton className="h-4 w-16 rounded-full" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   if (!data || data.items.length === 0) {

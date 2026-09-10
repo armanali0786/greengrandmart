@@ -15,6 +15,7 @@ import type { ReturnView } from '@/modules/returns/return.types';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 const RETURN_REASON_LABELS: Record<string, string> = {
   damaged: 'Item arrived damaged',
@@ -47,6 +48,7 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
   const [returningItem, setReturningItem] = useState<OrderItemView | null>(null);
   const [returnReason, setReturnReason] = useState('damaged');
   const [returnNote, setReturnNote] = useState('');
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['orders', id],
@@ -118,6 +120,7 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
   // a plain navigation, so the current ID token travels as a query param
   // instead — see invoice/dev-download/route.ts.
   async function handleDownloadInvoice() {
+    setInvoiceLoading(true);
     try {
       const { url } = await authFetch<{ url: string }>(`/api/orders/${id}/invoice`);
       if (url.startsWith('/api/')) {
@@ -128,11 +131,26 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not download the invoice.');
+    } finally {
+      setInvoiceLoading(false);
     }
   }
 
   if (isLoading) {
-    return <div className="bg-primary-50 h-96 animate-pulse rounded-[10px]" />;
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <Skeleton className="h-6 w-24 rounded-full" />
+        </div>
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
   }
   if (!order) {
     return <p className="text-muted text-sm">Order not found.</p>;
@@ -330,7 +348,7 @@ export default function OrderDetailPage({ params }: PageProps<'/account/orders/[
           <Button variant="secondary">Back to orders</Button>
         </Link>
         {!UNCONFIRMED_STATUSES.has(order.status) && (
-          <Button variant="secondary" onClick={handleDownloadInvoice}>
+          <Button variant="secondary" loading={invoiceLoading} onClick={handleDownloadInvoice}>
             Download invoice
           </Button>
         )}

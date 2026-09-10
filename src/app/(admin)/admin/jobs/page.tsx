@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { authFetch } from '@/lib/api-client';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface FailedJob {
   id: string;
@@ -30,7 +31,19 @@ export default function AdminJobsPage() {
       <h1 className="text-foreground mb-6 text-2xl font-semibold">Failed Jobs</h1>
 
       {isLoading ? (
-        <div className="bg-primary-50 h-64 animate-pulse rounded-[10px]" />
+        <div className="border-border bg-surface overflow-hidden rounded-[10px] border">
+          <div className="divide-border divide-y">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-6 px-4 py-3">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-4 w-10" />
+                <Skeleton className="h-4 w-56" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : !data || data.rows.length === 0 ? (
         <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
           No failed jobs.

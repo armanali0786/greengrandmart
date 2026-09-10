@@ -9,6 +9,7 @@ import {
   type ProductFormValues,
 } from '@/components/admin/ProductForm';
 import { ProductImageManager } from '@/components/admin/ProductImageManager';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type {
   CategoryNode,
   BrandSummary,
@@ -52,7 +53,34 @@ export default function EditProductPage({ params }: PageProps<'/admin/products/[
   }
 
   if (productLoading || !categories || !brands || !product) {
-    return <div className="bg-primary-50 h-96 animate-pulse rounded-[10px]" />;
+    return (
+      <div className="max-w-3xl">
+        <Skeleton className="mb-6 h-8 w-40" />
+        <div className="mb-8">
+          <Skeleton className="mb-4 h-5 w-16" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+        <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-4">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-11 w-full" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Skeleton className="h-11 w-full" />
+              <Skeleton className="h-11 w-full" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-4">
+            <Skeleton className="h-5 w-32" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Skeleton className="h-11 w-full" />
+              <Skeleton className="h-11 w-full" />
+            </div>
+          </div>
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </div>
+    );
   }
 
   const defaultValues: Partial<ProductFormValues> = {

@@ -10,6 +10,7 @@ import { toRupeeDisplay } from '@/lib/money';
 import { cn } from '@/lib/cn';
 import { CouponInput, type AppliedCoupon } from '@/components/storefront/CouponInput';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { RAZORPAY_STUB_KEY_ID } from '@/lib/payment-constants';
 import { openRazorpayCheckout } from '@/lib/razorpay-checkout';
 import type { AddressRecord } from '@/modules/auth/address.repository';
@@ -116,7 +117,15 @@ export default function CheckoutPage() {
   if (cartLoading || addressesLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <div className="bg-primary-50 h-96 animate-pulse rounded-[10px]" />
+        <Skeleton className="mb-6 h-8 w-32" />
+        <div className="grid gap-8 md:grid-cols-[1fr_360px]">
+          <div className="flex flex-col gap-6">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+          <Skeleton className="h-64 w-full" />
+        </div>
       </div>
     );
   }
@@ -207,7 +216,7 @@ export default function CheckoutPage() {
 
         <div className="border-border bg-surface flex h-fit flex-col gap-3 rounded-[10px] border p-4">
           <h2 className="text-foreground text-base font-semibold">Order summary</h2>
-          {quoteLoading && <div className="bg-primary-50 h-40 animate-pulse rounded-[10px]" />}
+          {quoteLoading && <Skeleton className="h-40 w-full" />}
           {quoteError && (
             <p role="alert" className="bg-error-bg text-error rounded-[10px] px-3 py-2 text-sm">
               {quoteError}

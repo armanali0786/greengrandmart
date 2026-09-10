@@ -11,6 +11,7 @@ import type { CouponSummary } from '@/modules/pricing/pricing.types';
 import type { CategoryNode, BrandSummary } from '@/modules/catalog/catalog.types';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 function couponValueLabel(coupon: CouponSummary): string {
   return coupon.type === 'percentage' ? `${coupon.value}%` : toRupeeDisplay(coupon.value);
@@ -26,7 +27,11 @@ function couponStatus(coupon: CouponSummary): { label: string; className: string
 
 export default function AdminCouponsPage() {
   const queryClient = useQueryClient();
-  const { data: coupons, isLoading } = useQuery({
+  const {
+    data: coupons,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['admin', 'coupons'],
     queryFn: () => authFetch<CouponSummary[]>('/api/admin/coupons'),
   });
@@ -91,7 +96,47 @@ export default function AdminCouponsPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-primary-50 h-48 animate-pulse rounded-[10px]" />
+        <div className="border-border bg-surface overflow-x-auto rounded-[10px] border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-border text-muted border-b text-left">
+                <th className="px-4 py-3 font-medium">Code</th>
+                <th className="px-4 py-3 font-medium">Value</th>
+                <th className="px-4 py-3 font-medium">Usage</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-border divide-y">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-20" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-12" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-16" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Skeleton className="ml-auto h-8 w-28" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : isError ? (
+        <p
+          role="alert"
+          className="bg-error-bg text-error rounded-[10px] px-4 py-16 text-center text-sm"
+        >
+          Failed to load coupons.
+        </p>
       ) : !coupons || coupons.length === 0 ? (
         <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
           No coupons yet.
@@ -132,6 +177,9 @@ export default function AdminCouponsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          loading={
+                            toggleActive.isPending && toggleActive.variables?.id === coupon.id
+                          }
                           onClick={() =>
                             toggleActive.mutate({ id: coupon.id, active: !coupon.active })
                           }

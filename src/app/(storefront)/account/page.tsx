@@ -9,6 +9,7 @@ import { updateProfileSchema, type UpdateProfileInput } from '@/modules/auth/aut
 import type { SessionUser } from '@/modules/auth/auth.types';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function ProfilePage() {
   const queryClient = useQueryClient();
@@ -40,7 +41,15 @@ export default function ProfilePage() {
   });
 
   if (isLoading) {
-    return <div className="bg-primary-50 h-48 animate-pulse rounded-[10px]" />;
+    return (
+      <div className="flex max-w-md flex-col gap-4">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-28" />
+      </div>
+    );
   }
 
   return (

@@ -8,6 +8,7 @@ import type { AddressInput } from '@/modules/auth/address.schema';
 import type { AddressRecord } from '@/modules/auth/address.repository';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddressForm } from '@/components/storefront/AddressForm';
 
@@ -54,7 +55,18 @@ export default function AddressesPage() {
   const deletingAddress = addresses?.find((a) => a.id === deletingId);
 
   if (isLoading) {
-    return <div className="bg-primary-50 h-48 animate-pulse rounded-[10px]" />;
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="border-border bg-surface rounded-[10px] border p-4">
+            <Skeleton className="mb-3 h-4 w-28" />
+            <Skeleton className="mb-1.5 h-4 w-32" />
+            <Skeleton className="mb-1.5 h-3 w-24" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (

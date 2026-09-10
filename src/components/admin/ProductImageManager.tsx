@@ -7,15 +7,20 @@ import { ArrowLeft, ArrowRight, Star, Trash2, Upload } from 'lucide-react';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { getFirebaseAuth } from '@/lib/firebase-client';
 import { Button } from '@/components/ui/Button';
+import { IndeterminateBar } from '@/components/ui/ProgressBar';
+import { Spinner } from '@/components/ui/Spinner';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { ProductImageDetail } from '@/modules/catalog/catalog.types';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_BYTES = 5 * 1024 * 1024;
 
+type UploadStage = 'uploading' | 'processing' | null;
+
 export function ProductImageManager({ productId }: { productId: string }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const [stage, setStage] = useState<UploadStage>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { data: images, isLoading } = useQuery({
@@ -75,7 +80,7 @@ export function ProductImageManager({ productId }: { productId: string }) {
       return;
     }
 
-    setUploading(true);
+    setStage('uploading');
     try {
       const { uploadUrl, storagePath } = await authFetch<{
         uploadUrl: string;
@@ -88,7 +93,10 @@ export function ProductImageManager({ productId }: { productId: string }) {
       // A real signed URL is self-authorizing and needs no header; our own
       // dev-upload fallback route (local emulator only — see
       // image-upload.service.ts) is same-origin and needs a Bearer token
-      // like every other API route.
+      // like every other API route. No real byte-percentage is shown here
+      // (IndeterminateBar, not ProgressBar) — a same-machine dev upload is
+      // over before a percentage would be meaningful, and it would only be
+      // honest for the real signed-URL path in production anyway.
       const isOwnOrigin = uploadUrl.startsWith('/');
       const putRes = await fetch(uploadUrl, {
         method: 'PUT',
@@ -102,6 +110,10 @@ export function ProductImageManager({ productId }: { productId: string }) {
       });
       if (!putRes.ok) throw new Error('Upload to storage failed.');
 
+      // The bytes are uploaded, but the server still has to re-download,
+      // validate (magic-byte check via sharp), strip EXIF, and resize before
+      // this resolves — a distinct "processing" wait, not more upload.
+      setStage('processing');
       await authFetch(`/api/admin/products/${productId}/images`, {
         method: 'POST',
         body: JSON.stringify({ storagePath, isPrimary: !images || images.length === 0 }),
@@ -110,11 +122,19 @@ export function ProductImageManager({ productId }: { productId: string }) {
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Upload failed. Please try again.');
     } finally {
-      setUploading(false);
+      setStage(null);
     }
   }
 
-  if (isLoading) return <div className="bg-primary-50 h-24 animate-pulse rounded-[10px]" />;
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} className="aspect-square w-full" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -195,13 +215,21 @@ export function ProductImageManager({ productId }: { productId: string }) {
       <Button
         type="button"
         variant="secondary"
-        loading={uploading}
+        loading={stage !== null}
         onClick={() => fileInputRef.current?.click()}
         className="w-fit"
       >
         <Upload className="h-4 w-4" aria-hidden="true" />
         Upload image
       </Button>
+
+      {stage === 'uploading' && (
+        <div className="flex max-w-xs flex-col gap-1">
+          <span className="text-muted text-xs">Uploading image…</span>
+          <IndeterminateBar />
+        </div>
+      )}
+      {stage === 'processing' && <Spinner message="Processing image…" className="justify-start" />}
     </div>
   );
 }

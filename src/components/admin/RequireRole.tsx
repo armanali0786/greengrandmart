@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { authFetch } from '@/lib/api-client';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { SessionUser } from '@/modules/auth/auth.types';
 
 /**
@@ -47,8 +48,8 @@ export function RequireRole({
   if (loading || !allowed) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <div className="bg-primary-50 h-6 w-40 animate-pulse rounded" />
-        <div className="bg-primary-50 mt-4 h-64 animate-pulse rounded-[10px]" />
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="mt-4 h-64 w-full" />
       </div>
     );
   }

@@ -8,6 +8,7 @@ import { toRupeeDisplay } from '@/lib/money';
 import { orderStatusBadgeClass, orderStatusLabel } from '@/lib/order-status-display';
 import type { OrderDetail, OrderStatus } from '@/modules/orders/order.types';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 const SHIPMENT_STATUSES: ReadonlySet<OrderStatus> = new Set([
   'packed',
@@ -83,7 +84,24 @@ export default function AdminOrderDetailPage({ params }: PageProps<'/admin/order
   });
 
   if (isLoading) {
-    return <div className="bg-primary-50 h-96 animate-pulse rounded-[10px]" />;
+    return (
+      <div className="max-w-3xl">
+        <Skeleton className="mb-4 h-4 w-28" />
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <Skeleton className="mb-2 h-7 w-40" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-6 w-24 rounded-full" />
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Skeleton className="h-48 rounded-[10px]" />
+          <Skeleton className="h-48 rounded-[10px]" />
+        </div>
+        <Skeleton className="mt-6 h-40 rounded-[10px]" />
+        <Skeleton className="mt-6 h-32 rounded-[10px]" />
+      </div>
+    );
   }
   if (!order) {
     return <p className="text-muted text-sm">Order not found.</p>;

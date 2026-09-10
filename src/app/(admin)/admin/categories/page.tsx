@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 function flatten(nodes: CategoryNode[], depth = 0): (CategoryNode & { depth: number })[] {
   return nodes.flatMap((n) => [{ ...n, depth }, ...flatten(n.children, depth + 1)]);
@@ -19,7 +20,11 @@ function flatten(nodes: CategoryNode[], depth = 0): (CategoryNode & { depth: num
 
 export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
-  const { data: tree, isLoading } = useQuery({
+  const {
+    data: tree,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['categories'],
     queryFn: () => authFetch<CategoryNode[]>('/api/admin/categories'),
   });
@@ -89,7 +94,27 @@ export default function AdminCategoriesPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-primary-50 h-48 animate-pulse rounded-[10px]" />
+        <div className="border-border divide-border bg-surface divide-y overflow-hidden rounded-[10px] border">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between px-4 py-3">
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-9 w-16" />
+                <Skeleton className="h-9 w-16" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : isError ? (
+        <p
+          role="alert"
+          className="bg-error-bg text-error rounded-[10px] px-4 py-16 text-center text-sm"
+        >
+          Failed to load categories.
+        </p>
       ) : flat.length === 0 ? (
         <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
           No categories yet.

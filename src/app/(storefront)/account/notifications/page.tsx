@@ -6,6 +6,7 @@ import { authFetch, ApiError } from '@/lib/api-client';
 import { requestPushToken } from '@/lib/firebase-client';
 import { useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type {
   NotificationPreferencesView,
   NotificationView,
@@ -28,6 +29,7 @@ export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [pushStatus, setPushStatus] = useState<string | null>(null);
+  const [pushLoading, setPushLoading] = useState(false);
   const limit = 20;
 
   const { data, isLoading } = useQuery({
@@ -54,6 +56,7 @@ export default function NotificationsPage() {
 
   async function handleEnablePush() {
     setPushStatus(null);
+    setPushLoading(true);
     try {
       const token = await requestPushToken();
       if (!token) {
@@ -69,6 +72,8 @@ export default function NotificationsPage() {
       setPushStatus('Push notifications enabled on this device.');
     } catch (e) {
       setPushStatus(e instanceof ApiError ? e.message : 'Could not enable push notifications.');
+    } finally {
+      setPushLoading(false);
     }
   }
 
@@ -80,9 +85,10 @@ export default function NotificationsPage() {
           <button
             type="button"
             onClick={() => markAllRead.mutate()}
-            className="text-primary-700 text-sm font-medium hover:underline"
+            disabled={markAllRead.isPending}
+            className="text-primary-700 text-sm font-medium hover:underline disabled:opacity-50"
           >
-            Mark all read
+            {markAllRead.isPending ? 'Marking…' : 'Mark all read'}
           </button>
         )}
       </div>
@@ -102,7 +108,7 @@ export default function NotificationsPage() {
           ))}
         </div>
         <div className="border-border mt-4 border-t pt-4">
-          <Button variant="secondary" onClick={handleEnablePush}>
+          <Button variant="secondary" loading={pushLoading} onClick={handleEnablePush}>
             Enable push notifications on this device
           </Button>
           {pushStatus && <p className="text-muted mt-2 text-xs">{pushStatus}</p>}
@@ -112,7 +118,15 @@ export default function NotificationsPage() {
       <section className="border-border bg-surface rounded-[10px] border p-4">
         <h3 className="text-foreground mb-3 text-sm font-semibold">Recent activity</h3>
         {isLoading ? (
-          <div className="bg-primary-50 h-48 animate-pulse rounded-[10px]" />
+          <ul className="divide-border divide-y">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <li key={i} className="flex flex-col gap-1.5 py-3">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-56" />
+                <Skeleton className="h-3 w-24" />
+              </li>
+            ))}
+          </ul>
         ) : !data || data.items.length === 0 ? (
           <p className="text-muted text-sm">No notifications yet.</p>
         ) : (
@@ -122,7 +136,8 @@ export default function NotificationsPage() {
                 <button
                   type="button"
                   onClick={() => !n.read && markRead.mutate(n.id)}
-                  className={`flex w-full flex-col gap-0.5 py-3 text-left text-sm ${n.read ? '' : 'bg-primary-50'}`}
+                  disabled={markRead.isPending && markRead.variables === n.id}
+                  className={`flex w-full flex-col gap-0.5 py-3 text-left text-sm disabled:opacity-60 ${n.read ? '' : 'bg-primary-50'}`}
                 >
                   <span className="text-foreground font-medium">{n.title}</span>
                   <span className="text-muted text-xs">{n.body}</span>

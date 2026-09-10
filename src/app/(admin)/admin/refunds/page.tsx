@@ -7,6 +7,7 @@ import { toRupeeDisplay, toPaise } from '@/lib/money';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { AdminRefundSummary, RefundStatus, RefundType } from '@/modules/refunds/refund.types';
 
 interface AdminRefundsPage {
@@ -73,7 +74,22 @@ export default function AdminRefundsPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-primary-50 h-64 animate-pulse rounded-[10px]" />
+        <div className="border-border bg-surface overflow-hidden rounded-[10px] border">
+          <div className="divide-border divide-y">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-6 px-4 py-3">
+                <Skeleton className="h-4 w-24" />
+                <div className="flex-1">
+                  <Skeleton className="mb-1.5 h-4 w-32" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+                <Skeleton className="h-4 w-14" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : !data || data.items.length === 0 ? (
         <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
           No refunds found.

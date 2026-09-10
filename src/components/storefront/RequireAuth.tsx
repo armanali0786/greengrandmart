@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 /**
  * Client-side gate for pages that require sign-in (account pages now; admin
@@ -27,8 +28,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (loading || !firebaseUser) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <div className="bg-primary-50 h-6 w-40 animate-pulse rounded" />
-        <div className="bg-primary-50 mt-4 h-32 animate-pulse rounded-[10px]" />
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="mt-4 h-32 w-full" />
       </div>
     );
   }

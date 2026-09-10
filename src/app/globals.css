@@ -90,3 +90,13 @@ body {
   min-width: 44px;
   min-height: 44px;
 }
+
+/* ui/ProgressBar.tsx's IndeterminateBar — a sliding segment for work with no known percentage. */
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}

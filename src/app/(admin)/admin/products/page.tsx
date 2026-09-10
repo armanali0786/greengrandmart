@@ -9,6 +9,7 @@ import { authFetch } from '@/lib/api-client';
 import { toRupeeDisplay } from '@/lib/money';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { AdminProductListItem, PaginatedResult } from '@/modules/catalog/catalog.types';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -50,7 +51,41 @@ export default function AdminProductsPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-primary-50 h-64 animate-pulse rounded-[10px]" />
+        <div className="border-border bg-surface overflow-hidden rounded-[10px] border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-border text-muted border-b text-left">
+                <th className="px-4 py-3 font-medium">Product</th>
+                <th className="px-4 py-3 font-medium">Price</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Stock</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i} className="border-border border-b last:border-0">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-10 w-10 shrink-0 rounded-[6px]" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-16" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-20" />
+                  </td>
+                  <td className="px-4 py-3" />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : !data || data.items.length === 0 ? (
         <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
           No products yet.

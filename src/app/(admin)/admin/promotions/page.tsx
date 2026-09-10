@@ -11,6 +11,7 @@ import type { PromotionSummary } from '@/modules/pricing/pricing.types';
 import type { CategoryNode, BrandSummary } from '@/modules/catalog/catalog.types';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 function promotionValueLabel(promotion: PromotionSummary): string {
   if (promotion.rules.type === 'free_shipping') {
@@ -39,7 +40,11 @@ function promotionStatus(promotion: PromotionSummary): { label: string; classNam
 
 export default function AdminPromotionsPage() {
   const queryClient = useQueryClient();
-  const { data: promotions, isLoading } = useQuery({
+  const {
+    data: promotions,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['admin', 'promotions'],
     queryFn: () => authFetch<PromotionSummary[]>('/api/admin/promotions'),
   });
@@ -107,7 +112,28 @@ export default function AdminPromotionsPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-primary-50 h-48 animate-pulse rounded-[10px]" />
+        <div className="border-border bg-surface divide-border divide-y overflow-hidden rounded-[10px] border">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between px-4 py-3">
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-9 w-16" />
+                <Skeleton className="h-9 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : isError ? (
+        <p
+          role="alert"
+          className="bg-error-bg text-error rounded-[10px] px-4 py-16 text-center text-sm"
+        >
+          Failed to load promotions.
+        </p>
       ) : !promotions || promotions.length === 0 ? (
         <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
           No promotions yet.
@@ -132,6 +158,7 @@ export default function AdminPromotionsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    loading={toggleActive.isPending && toggleActive.variables?.id === promotion.id}
                     onClick={() =>
                       toggleActive.mutate({ id: promotion.id, active: !promotion.active })
                     }

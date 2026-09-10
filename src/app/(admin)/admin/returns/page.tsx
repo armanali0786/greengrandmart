@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { AdminReturnSummary, ReturnStatus } from '@/modules/returns/return.types';
 
 interface AdminReturnsPage {
@@ -103,7 +104,23 @@ export default function AdminReturnsPage() {
       )}
 
       {isLoading ? (
-        <div className="bg-primary-50 h-64 animate-pulse rounded-[10px]" />
+        <div className="border-border bg-surface overflow-hidden rounded-[10px] border">
+          <div className="divide-border divide-y">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-6 px-4 py-3">
+                <Skeleton className="h-4 w-20" />
+                <div className="flex-1">
+                  <Skeleton className="mb-1.5 h-4 w-28" />
+                  <Skeleton className="h-3 w-36" />
+                </div>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-8 w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : !data || data.items.length === 0 ? (
         <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
           No returns found.
@@ -149,7 +166,7 @@ export default function AdminReturnsPage() {
                         <>
                           <Button
                             className="h-8 px-2 text-xs"
-                            loading={approve.isPending}
+                            loading={approve.isPending && approve.variables === ret.id}
                             onClick={() => approve.mutate(ret.id)}
                           >
                             Approve
@@ -157,7 +174,7 @@ export default function AdminReturnsPage() {
                           <Button
                             variant="destructive"
                             className="h-8 px-2 text-xs"
-                            loading={reject.isPending}
+                            loading={reject.isPending && reject.variables === ret.id}
                             onClick={() => reject.mutate(ret.id)}
                           >
                             Reject
@@ -167,7 +184,7 @@ export default function AdminReturnsPage() {
                       {ret.status === 'approved' && (
                         <Button
                           className="h-8 px-2 text-xs"
-                          loading={markReceived.isPending}
+                          loading={markReceived.isPending && markReceived.variables === ret.id}
                           onClick={() => markReceived.mutate(ret.id)}
                         >
                           Mark received
@@ -176,7 +193,7 @@ export default function AdminReturnsPage() {
                       {ret.status === 'item_received' && (
                         <Button
                           className="h-8 px-2 text-xs"
-                          loading={complete.isPending}
+                          loading={complete.isPending && complete.variables === ret.id}
                           onClick={() => complete.mutate(ret.id)}
                         >
                           Mark complete

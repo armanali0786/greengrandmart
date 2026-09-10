@@ -12,10 +12,15 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function AdminBrandsPage() {
   const queryClient = useQueryClient();
-  const { data: brands, isLoading } = useQuery({
+  const {
+    data: brands,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['brands'],
     queryFn: () => authFetch<BrandSummary[]>('/api/admin/brands'),
   });
@@ -84,7 +89,27 @@ export default function AdminBrandsPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-primary-50 h-48 animate-pulse rounded-[10px]" />
+        <div className="border-border divide-border bg-surface divide-y overflow-hidden rounded-[10px] border">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between px-4 py-3">
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-9 w-16" />
+                <Skeleton className="h-9 w-16" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : isError ? (
+        <p
+          role="alert"
+          className="bg-error-bg text-error rounded-[10px] px-4 py-16 text-center text-sm"
+        >
+          Failed to load brands.
+        </p>
       ) : !brands || brands.length === 0 ? (
         <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
           No brands yet.

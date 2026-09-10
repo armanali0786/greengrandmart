@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/Toast';
 import { CartItemRow } from '@/components/storefront/CartItemRow';
 import { CouponInput, type AppliedCoupon } from '@/components/storefront/CouponInput';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { toRupeeDisplay } from '@/lib/money';
 
 const UNDO_WINDOW_MS = 5000;
@@ -63,7 +64,21 @@ export default function CartPage() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <div className="bg-primary-50 h-64 animate-pulse rounded-[10px]" />
+        <Skeleton className="mb-6 h-8 w-32" />
+        <div className="grid gap-8 md:grid-cols-[1fr_320px]">
+          <div className="border-border bg-surface flex flex-col gap-4 rounded-[10px] border px-4 py-4">
+            {Array.from({ length: 3 }, (_, i) => (
+              <div key={i} className="flex gap-3">
+                <Skeleton className="h-20 w-20 shrink-0" />
+                <div className="flex flex-1 flex-col gap-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-4 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <Skeleton className="h-48 w-full" />
+        </div>
       </div>
     );
   }
