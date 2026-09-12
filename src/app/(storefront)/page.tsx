@@ -42,7 +42,15 @@ export default async function HomePage() {
 
       {categories.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
-          <h2 className="text-foreground mb-4 text-lg font-semibold">Shop by Category</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-foreground text-lg font-semibold">Shop by Category</h2>
+            <Link
+              href="/categories"
+              className="text-primary-700 text-sm font-medium hover:underline"
+            >
+              See all →
+            </Link>
+          </div>
           <CategoryShortcuts categories={categories} />
         </section>
       )}

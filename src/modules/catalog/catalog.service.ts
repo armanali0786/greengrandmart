@@ -45,6 +45,8 @@ function toPaginated<T>(
 function toProductListItem(row: ProductListRow): ProductListItem {
   const inStock = row.variants.some((v) => (v.inventory?.availableQty ?? 0) > 0);
   const primaryImage = row.images[0];
+  const ratings = row.reviews.map((r) => r.rating);
+  const average = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
   return {
     id: row.id,
     name: row.name,
@@ -54,6 +56,9 @@ function toProductListItem(row: ProductListRow): ProductListItem {
     primaryImage: primaryImage ? getPublicImageUrl(primaryImage.storagePath) : null,
     inStock,
     isFeatured: row.isFeatured,
+    brandName: row.brand?.name ?? null,
+    rating: average !== null ? Math.round(average * 10) / 10 : null,
+    reviewCount: ratings.length,
   };
 }
 

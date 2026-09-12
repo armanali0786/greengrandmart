@@ -10,6 +10,9 @@ export interface ProductListItem {
   primaryImage: string | null;
   inStock: boolean;
   isFeatured: boolean;
+  brandName: string | null;
+  rating: number | null;
+  reviewCount: number;
 }
 
 /** Admin's product list needs status (draft/active/archived) — customers never see it. */

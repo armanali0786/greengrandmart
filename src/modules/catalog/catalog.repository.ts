@@ -13,6 +13,8 @@ type TxClient = Prisma.TransactionClient;
 const productListInclude = {
   images: { where: { isPrimary: true }, take: 1 },
   variants: { include: { inventory: true } },
+  brand: { select: { name: true } },
+  reviews: { where: { status: 'approved' }, select: { rating: true } },
 } satisfies Prisma.ProductInclude;
 
 const productDetailInclude = {
