@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Wallet } from 'lucide-react';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { toRupeeDisplay, toPaise } from '@/lib/money';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import type { AdminRefundSummary, RefundStatus, RefundType } from '@/modules/refunds/refund.types';
@@ -98,9 +100,15 @@ export default function AdminRefundsPage() {
           </div>
         </div>
       ) : !data || data.items.length === 0 ? (
-        <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
-          No refunds found.
-        </p>
+        <div className="border-border bg-surface rounded-[10px] border">
+          <EmptyState
+            icon={Wallet}
+            title="No refunds yet"
+            description="Refunds you initiate for orders will appear here."
+            action={<Button onClick={() => setCreating(true)}>Initiate refund</Button>}
+            compact
+          />
+        </div>
       ) : (
         <div className="border-border bg-surface overflow-x-auto rounded-[10px] border">
           <table className="w-full text-sm">

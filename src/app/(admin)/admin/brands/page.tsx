@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, Tag } from 'lucide-react';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { createBrandSchema, type CreateBrandInput } from '@/modules/catalog/catalog.schema';
 import type { BrandSummary } from '@/modules/catalog/catalog.types';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 
@@ -122,9 +123,19 @@ export default function AdminBrandsPage() {
           Failed to load brands.
         </p>
       ) : !brands || brands.length === 0 ? (
-        <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
-          No brands yet.
-        </p>
+        <div className="border-border bg-surface rounded-[10px] border">
+          <EmptyState
+            icon={Tag}
+            title="No brands yet"
+            description="Add a brand to start tagging your products."
+            action={
+              <Button size="sm" onClick={openCreate}>
+                Add brand
+              </Button>
+            }
+            compact
+          />
+        </div>
       ) : (
         <div className="border-border divide-border bg-surface divide-y overflow-hidden rounded-[10px] border">
           {brands.map((brand) => (

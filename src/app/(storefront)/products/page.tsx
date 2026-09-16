@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { listProductsQuerySchema } from '@/modules/catalog/catalog.schema';
 import { listBrands, listCategoryTree, listProducts } from '@/modules/catalog/catalog.service';
 import { ProductGrid } from '@/components/storefront/ProductGrid';
@@ -7,6 +8,7 @@ import {
   MobileProductFilters,
 } from '@/components/storefront/ProductFilters';
 import { Pagination } from '@/components/storefront/Pagination';
+import { Button } from '@/components/ui/Button';
 
 export const metadata: Metadata = { title: 'All Products' };
 
@@ -19,6 +21,14 @@ export default async function ProductsPage({ searchParams }: PageProps<'/product
     listCategoryTree(),
     listBrands(),
   ]);
+
+  const hasActiveFilters = Boolean(
+    query.category ||
+    query.brand ||
+    query.minPrice !== undefined ||
+    query.maxPrice !== undefined ||
+    query.inStock,
+  );
 
   function buildHref(targetPage: number): string {
     const usp = new URLSearchParams();
@@ -39,7 +49,26 @@ export default async function ProductsPage({ searchParams }: PageProps<'/product
       <div className="flex gap-8">
         <DesktopProductFilters categories={categories} brands={brands} />
         <div className="min-w-0 flex-1">
-          <ProductGrid products={items} />
+          <ProductGrid
+            products={items}
+            emptyTitle={
+              hasActiveFilters ? 'No products match your filters' : 'No products available'
+            }
+            emptyMessage={
+              hasActiveFilters
+                ? 'Try adjusting or clearing your filters to see more results.'
+                : "We're restocking — check back soon."
+            }
+            emptyAction={
+              hasActiveFilters ? (
+                <Link href="/products">
+                  <Button variant="secondary" size="sm">
+                    Clear filters
+                  </Button>
+                </Link>
+              ) : undefined
+            }
+          />
         </div>
       </div>
 

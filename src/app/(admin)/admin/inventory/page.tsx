@@ -1,15 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { PackageSearch } from 'lucide-react';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { adjustStockSchema, type AdjustStockInput } from '@/modules/inventory/inventory.schema';
 import type { InventoryListItem } from '@/modules/inventory/inventory.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 
@@ -91,9 +94,19 @@ export default function AdminInventoryPage() {
           </div>
         </div>
       ) : !items || items.length === 0 ? (
-        <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
-          No variants yet — create a product first.
-        </p>
+        <div className="border-border bg-surface rounded-[10px] border">
+          <EmptyState
+            icon={PackageSearch}
+            title="No inventory yet"
+            description="Stock appears here once you add products with variants."
+            action={
+              <Link href="/admin/products/new">
+                <Button size="sm">Add a product</Button>
+              </Link>
+            }
+            compact
+          />
+        </div>
       ) : (
         <div className="border-border bg-surface overflow-x-auto rounded-[10px] border">
           <table className="w-full text-sm">

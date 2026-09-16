@@ -1,22 +1,34 @@
+import type { ReactNode } from 'react';
 import { PackageSearch } from 'lucide-react';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import type { ProductListItem } from '@/modules/catalog/catalog.types';
 
 export interface ProductGridProps {
   products: ProductListItem[];
+  emptyTitle?: string;
   emptyMessage?: string;
+  /** e.g. a "Clear filters" link/button, shown only when filters narrowed the result to zero. */
+  emptyAction?: ReactNode;
 }
 
 // docs/UX_UI_Spec.md §4.2: 2 columns mobile, 4 columns desktop.
 export function ProductGrid({
   products,
+  emptyTitle = 'No products found',
   emptyMessage = 'No products match your filters.',
+  emptyAction,
 }: ProductGridProps) {
   if (products.length === 0) {
     return (
-      <div className="border-border bg-surface flex flex-col items-center gap-3 rounded-[10px] border px-6 py-16 text-center">
-        <PackageSearch className="text-muted h-10 w-10" aria-hidden="true" />
-        <p className="text-muted text-sm">{emptyMessage}</p>
+      <div className="border-border bg-surface rounded-[10px] border">
+        <EmptyState
+          icon={PackageSearch}
+          title={emptyTitle}
+          description={emptyMessage}
+          action={emptyAction}
+          compact
+        />
       </div>
     );
   }

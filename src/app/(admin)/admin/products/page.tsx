@@ -4,11 +4,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, PackageSearch } from 'lucide-react';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { toRupeeDisplay } from '@/lib/money';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import type { AdminProductListItem, PaginatedResult } from '@/modules/catalog/catalog.types';
@@ -95,9 +96,19 @@ export default function AdminProductsPage() {
           </table>
         </div>
       ) : !data || data.items.length === 0 ? (
-        <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
-          No products yet.
-        </p>
+        <div className="border-border bg-surface rounded-[10px] border">
+          <EmptyState
+            icon={PackageSearch}
+            title="No products yet"
+            description="Get your catalog started by adding your first product."
+            action={
+              <Link href="/admin/products/new">
+                <Button size="sm">Add product</Button>
+              </Link>
+            }
+            compact
+          />
+        </div>
       ) : (
         <div className="border-border bg-surface overflow-x-auto rounded-[10px] border">
           <table className="w-full text-sm">

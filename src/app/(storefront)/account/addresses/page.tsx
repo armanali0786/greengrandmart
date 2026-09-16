@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Star } from 'lucide-react';
+import { MapPin, Plus, Star } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
 import type { AddressInput } from '@/modules/auth/address.schema';
 import type { AddressRecord } from '@/modules/auth/address.repository';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { AddressForm } from '@/components/storefront/AddressForm';
 
 export default function AddressesPage() {
@@ -80,9 +81,20 @@ export default function AddressesPage() {
       </div>
 
       {addresses && addresses.length === 0 && (
-        <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-8 text-center text-sm">
-          No addresses saved yet.
-        </p>
+        <div className="border-border bg-surface rounded-[10px] border">
+          <EmptyState
+            icon={MapPin}
+            title="No addresses saved yet"
+            description="Add a shipping address to speed through checkout next time."
+            action={
+              <Button size="sm" onClick={() => setFormOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add address
+              </Button>
+            }
+            compact
+          />
+        </div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">

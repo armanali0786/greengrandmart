@@ -8,6 +8,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from '@/hooks/useNotifications';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 /** docs/UX_UI_Spec.md's "notification bell" nav item + Product_Spec_Requirements.md §10.3's in-app notification center — dropdown here, "view all" link to a dedicated page for the full paginated list. */
 export function NotificationBell() {
@@ -63,7 +64,7 @@ export function NotificationBell() {
             )}
           </div>
           {!data || data.items.length === 0 ? (
-            <p className="text-muted p-4 text-center text-sm">No notifications yet.</p>
+            <EmptyState icon={Bell} title="No notifications yet" compact />
           ) : (
             <ul className="divide-border divide-y">
               {data.items.map((n) => (

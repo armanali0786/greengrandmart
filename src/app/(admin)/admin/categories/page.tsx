@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, FolderTree } from 'lucide-react';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { createCategorySchema, type CreateCategoryInput } from '@/modules/catalog/catalog.schema';
 import type { CategoryNode } from '@/modules/catalog/catalog.types';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 
@@ -127,9 +128,19 @@ export default function AdminCategoriesPage() {
           Failed to load categories.
         </p>
       ) : flat.length === 0 ? (
-        <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
-          No categories yet.
-        </p>
+        <div className="border-border bg-surface rounded-[10px] border">
+          <EmptyState
+            icon={FolderTree}
+            title="No categories yet"
+            description="Create a category to help organize your products."
+            action={
+              <Button size="sm" onClick={openCreate}>
+                Create category
+              </Button>
+            }
+            compact
+          />
+        </div>
       ) : (
         <div className="border-border divide-border bg-surface divide-y overflow-hidden rounded-[10px] border">
           {flat.map((category) => (

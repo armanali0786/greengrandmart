@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { searchQuerySchema } from '@/modules/catalog/catalog.schema';
 import { searchProducts } from '@/modules/catalog/catalog.service';
 import { ProductGrid } from '@/components/storefront/ProductGrid';
 import { Pagination } from '@/components/storefront/Pagination';
 import { SearchBar } from '@/components/storefront/SearchBar';
+import { Button } from '@/components/ui/Button';
 
 export const metadata: Metadata = { title: 'Search' };
 
@@ -35,10 +37,20 @@ export default async function SearchPage({ searchParams }: PageProps<'/search'>)
 
       <ProductGrid
         products={result.items}
+        emptyTitle={q ? `No results for "${q}"` : 'Search for products'}
         emptyMessage={
           q
-            ? `No results for "${q}". Try browsing categories instead.`
-            : 'Search for products above.'
+            ? "We couldn't find anything matching your search. Try a different term or browse categories instead."
+            : 'Type something above to find products.'
+        }
+        emptyAction={
+          q ? (
+            <Link href="/categories">
+              <Button variant="secondary" size="sm">
+                Browse categories
+              </Button>
+            </Link>
+          ) : undefined
         }
       />
 

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { listCategoryProductsQuerySchema } from '@/modules/catalog/catalog.schema';
 import {
   getCategoryWithProducts,
@@ -11,6 +12,7 @@ import {
   MobileProductFilters,
 } from '@/components/storefront/ProductFilters';
 import { Pagination } from '@/components/storefront/Pagination';
+import { Button } from '@/components/ui/Button';
 
 export async function generateMetadata({
   params,
@@ -38,6 +40,10 @@ export default async function CategoryPage({
     listBrands(),
   ]);
 
+  const hasActiveFilters = Boolean(
+    query.brand || query.minPrice !== undefined || query.maxPrice !== undefined || query.inStock,
+  );
+
   function buildHref(targetPage: number): string {
     const usp = new URLSearchParams();
     for (const [key, value] of Object.entries(rawQuery)) {
@@ -57,7 +63,24 @@ export default async function CategoryPage({
       <div className="flex gap-8">
         <DesktopProductFilters categories={categories} brands={brands} hideCategoryFilter />
         <div className="min-w-0 flex-1">
-          <ProductGrid products={products.items} emptyMessage="No products in this category yet." />
+          <ProductGrid
+            products={products.items}
+            emptyTitle={hasActiveFilters ? 'No products match your filters' : 'No products yet'}
+            emptyMessage={
+              hasActiveFilters
+                ? 'Try adjusting or clearing your filters to see more results.'
+                : 'No products in this category yet — check back soon.'
+            }
+            emptyAction={
+              hasActiveFilters ? (
+                <Link href={`/categories/${slug}`}>
+                  <Button variant="secondary" size="sm">
+                    Clear filters
+                  </Button>
+                </Link>
+              ) : undefined
+            }
+          />
         </div>
       </div>
 

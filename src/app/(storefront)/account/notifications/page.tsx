@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bell } from 'lucide-react';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { requestPushToken } from '@/lib/firebase-client';
 import { useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type {
   NotificationPreferencesView,
   NotificationView,
@@ -128,7 +130,12 @@ export default function NotificationsPage() {
             ))}
           </ul>
         ) : !data || data.items.length === 0 ? (
-          <p className="text-muted text-sm">No notifications yet.</p>
+          <EmptyState
+            icon={Bell}
+            title="No notifications yet"
+            description="We'll let you know here when there's something new about your orders or account."
+            compact
+          />
         ) : (
           <ul className="divide-border divide-y">
             {data.items.map((n) => (

@@ -1,12 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { PackageSearch } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
 import { toRupeeDisplay } from '@/lib/money';
 import { orderStatusBadgeClass, orderStatusLabel } from '@/lib/order-status-display';
+import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type { OrderSummary } from '@/modules/orders/order.types';
 
 interface OrdersPage {
@@ -14,10 +17,13 @@ interface OrdersPage {
   total: number;
 }
 
+const LIMIT = 20;
+
 export default function OrdersPage() {
+  const [page, setPage] = useState(1);
   const { data, isLoading } = useQuery({
-    queryKey: ['orders'],
-    queryFn: () => authFetch<OrdersPage>('/api/orders?limit=50'),
+    queryKey: ['orders', page],
+    queryFn: () => authFetch<OrdersPage>(`/api/orders?page=${page}&limit=${LIMIT}`),
   });
 
   if (isLoading) {
@@ -44,12 +50,18 @@ export default function OrdersPage() {
 
   if (!data || data.items.length === 0) {
     return (
-      <div className="border-border bg-surface flex flex-col items-center gap-3 rounded-[10px] border px-4 py-16 text-center">
-        <PackageSearch className="text-muted h-10 w-10" aria-hidden="true" />
-        <p className="text-foreground font-medium">No orders yet</p>
-        <Link href="/products" className="text-primary-700 text-sm font-medium hover:underline">
-          Browse products
-        </Link>
+      <div className="border-border bg-surface rounded-[10px] border">
+        <EmptyState
+          icon={PackageSearch}
+          title="No orders yet"
+          description="You haven't placed any orders yet — once you do, they'll show up here."
+          action={
+            <Link href="/products">
+              <Button>Start shopping</Button>
+            </Link>
+          }
+          compact
+        />
       </div>
     );
   }
@@ -86,6 +98,20 @@ export default function OrdersPage() {
           </div>
         </Link>
       ))}
+      {data.total > LIMIT && (
+        <div className="mt-2 flex justify-between">
+          <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            Previous
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={page * LIMIT >= data.total}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

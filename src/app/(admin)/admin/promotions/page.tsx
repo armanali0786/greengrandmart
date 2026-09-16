@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, Megaphone } from 'lucide-react';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { toRupeeDisplay } from '@/lib/money';
 import { PromotionForm } from '@/components/admin/PromotionForm';
@@ -11,6 +11,7 @@ import type { PromotionSummary } from '@/modules/pricing/pricing.types';
 import type { CategoryNode, BrandSummary } from '@/modules/catalog/catalog.types';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 
@@ -151,9 +152,19 @@ export default function AdminPromotionsPage() {
           Failed to load promotions.
         </p>
       ) : !promotions || promotions.length === 0 ? (
-        <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
-          No promotions yet.
-        </p>
+        <div className="border-border bg-surface rounded-[10px] border">
+          <EmptyState
+            icon={Megaphone}
+            title="No promotions yet"
+            description="Set up a promotion to automatically discount products or offer free shipping."
+            action={
+              <Button size="sm" onClick={openCreate}>
+                Create promotion
+              </Button>
+            }
+            compact
+          />
+        </div>
       ) : (
         <div className="border-border bg-surface divide-border divide-y overflow-hidden rounded-[10px] border">
           {promotions.map((promotion) => {

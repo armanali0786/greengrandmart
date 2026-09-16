@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { RotateCcw } from 'lucide-react';
 import { authFetch, ApiError } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import type { AdminReturnSummary, ReturnStatus } from '@/modules/returns/return.types';
@@ -152,9 +154,25 @@ export default function AdminReturnsPage() {
           </div>
         </div>
       ) : !data || data.items.length === 0 ? (
-        <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
-          No returns found.
-        </p>
+        <div className="border-border bg-surface rounded-[10px] border">
+          <EmptyState
+            icon={RotateCcw}
+            title={status ? 'No returns match this filter' : 'No returns yet'}
+            description={
+              status
+                ? 'Try a different status, or clear the filter to see all returns.'
+                : 'Return requests from customers will show up here.'
+            }
+            action={
+              status ? (
+                <Button size="sm" variant="secondary" onClick={() => setStatus('')}>
+                  Clear filter
+                </Button>
+              ) : undefined
+            }
+            compact
+          />
+        </div>
       ) : (
         <div className="border-border bg-surface overflow-x-auto rounded-[10px] border">
           <table className="w-full text-sm">

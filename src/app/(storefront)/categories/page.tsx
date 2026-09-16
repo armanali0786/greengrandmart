@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
+import { LayoutGrid } from 'lucide-react';
 import { listCategoryTree } from '@/modules/catalog/catalog.service';
 import { CategoryTile } from '@/components/storefront/CategoryTile';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
 
 export const metadata: Metadata = { title: 'All Categories' };
 
@@ -17,7 +21,16 @@ export default async function CategoriesPage() {
           ))}
         </div>
       ) : (
-        <p className="text-muted text-sm">No categories yet.</p>
+        <EmptyState
+          icon={LayoutGrid}
+          title="No categories yet"
+          description="We're setting things up — check back soon, or browse all products in the meantime."
+          action={
+            <Link href="/products">
+              <Button>Browse products</Button>
+            </Link>
+          }
+        />
       )}
     </div>
   );

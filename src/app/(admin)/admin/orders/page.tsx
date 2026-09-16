@@ -3,10 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { ClipboardList } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
 import { toRupeeDisplay } from '@/lib/money';
 import { orderStatusBadgeClass, orderStatusLabel } from '@/lib/order-status-display';
 import type { AdminOrderSummary, OrderStatus } from '@/modules/orders/order.types';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 interface AdminOrdersPage {
@@ -74,9 +77,25 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       ) : !data || data.items.length === 0 ? (
-        <p className="border-border bg-surface text-muted rounded-[10px] border px-4 py-16 text-center text-sm">
-          No orders found.
-        </p>
+        <div className="border-border bg-surface rounded-[10px] border">
+          <EmptyState
+            icon={ClipboardList}
+            title={status ? 'No orders match this filter' : 'No orders yet'}
+            description={
+              status
+                ? 'Try a different status, or clear the filter to see all orders.'
+                : 'Orders will show up here once customers start checking out.'
+            }
+            action={
+              status ? (
+                <Button size="sm" variant="secondary" onClick={() => setStatus('')}>
+                  Clear filter
+                </Button>
+              ) : undefined
+            }
+            compact
+          />
+        </div>
       ) : (
         <div className="border-border bg-surface overflow-x-auto rounded-[10px] border">
           <table className="w-full text-sm">
