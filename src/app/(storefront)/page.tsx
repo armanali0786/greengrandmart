@@ -8,6 +8,12 @@ import {
 import { CategoryShortcuts } from '@/components/storefront/CategoryShortcuts';
 import { ProductRow } from '@/components/storefront/ProductRow';
 
+// Catalog data (categories/featured/newest) is admin-editable and must never
+// be baked in at build time — force per-request rendering so Netlify's build
+// (which has no DB access) doesn't try to prerender this page, and so a fresh
+// product/category never waits for the next deploy to appear.
+export const dynamic = 'force-dynamic';
+
 // docs/UX_UI_Spec.md §4.1 Home: hero banner, category shortcuts, featured
 // carousel, new arrivals, trust strip. "Empty fallback: category grid +
 // all-products link (never blank hero)" — handled below by always rendering
