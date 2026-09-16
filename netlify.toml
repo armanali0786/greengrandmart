@@ -4,6 +4,11 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Turbopack's persistent build cache stores server-only env values (e.g.
+  # RESEND_API_KEY) for faster incremental builds. That cache dir is never
+  # served to users, but Netlify's secret scanner walks it anyway — exclude
+  # it rather than the scan blocking the build on a non-issue.
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
