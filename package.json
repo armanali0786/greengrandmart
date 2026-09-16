@@ -23,6 +23,11 @@
     "prepare": "husky",
     "postinstall": "prisma generate"
   },
+  "overrides": {
+    "jwks-rsa": {
+      "jose": "^5.10.0"
+    }
+  },
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix",
