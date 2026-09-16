@@ -35,6 +35,7 @@ export function SearchBar({ initialValue = '' }: { initialValue?: string }) {
         onChange={(e) => setValue(e.target.value)}
         placeholder="Search products…"
         maxLength={200}
+        suppressHydrationWarning
         className="border-border bg-surface focus:border-primary-600 focus:ring-primary-500/30 h-11 w-full rounded-[10px] border pr-9 pl-9 text-sm focus:ring-2 focus:outline-none"
       />
       {value && (

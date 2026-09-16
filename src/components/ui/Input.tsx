@@ -26,6 +26,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
+          suppressHydrationWarning
           className={cn(
             'border-border bg-surface text-foreground placeholder:text-muted h-11 rounded-[10px] border px-3 text-sm',
             'focus:border-primary-600 focus:ring-primary-500/30 focus:ring-2 focus:outline-none',
